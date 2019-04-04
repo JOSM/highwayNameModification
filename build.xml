@@ -12,8 +12,8 @@
 **
 -->
 <project name="highwayNameModification" default="dist" basedir=".">
-    <property name="ant.build.javac.source" value="1.9"/>
-    <property name="ant.build.javac.target" value="1.9"/>
+    <property name="ant.build.javac.source" value="1.8"/>
+    <property name="ant.build.javac.target" value="1.8"/>
 
     <!-- enter the SVN commit message -->
     <property name="commit.message" value="Highway Name Modification"/>
