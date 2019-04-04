@@ -1,0 +1,7 @@
+README
+======
+This plugin is supposed to make it easier to change addr:street tags when highway names are changed.
+
+This plugin was initially developed by Taylor Smock <taylor.smock@kaartgroup.com>
+
+This plugin is licensed under the GPL v2 or later.
