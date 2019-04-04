@@ -52,6 +52,7 @@ public class HighwayNameListener implements DataSetListener {
 		if (osm.hasKey("highway") && originalKeys.containsKey("name") && osm.hasKey("name")) {
 			String originalName = originalKeys.get("name");
 			String oldName = osm.get("name");
+			if (originalName.equals(oldName)) return;
 			Collection<OsmPrimitive> potentialAddrChange = osm.getDataSet().getPrimitives(new Predicate<OsmPrimitive>() {
 				@Override
 				public boolean test(OsmPrimitive t) {
