@@ -113,6 +113,7 @@ public class HighwayNameListener implements DataSetListener {
 			case JOptionPane.YES_OPTION:
 				toChange.add(osm);
 			}
+			ds.clearHighlightedWaySegments();
 		}
 		ConditionalOptionPaneUtil.endBulkOperation(key);
 		if (toChange.isEmpty()) return;
