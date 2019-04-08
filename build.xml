@@ -26,7 +26,7 @@
     <property name="plugin.author" value="Taylor Smock"/>
     <property name="plugin.class" value="com.kaart.highwaynamemodification.HighwayNameModification"/>
     <property name="plugin.description" value="Modify addr tags when a highway name is changed"/>
-    <property name="plugin.icon" value="addresses"/>
+    <property name="plugin.icon" value="images/addresses.png"/>
     <property name="plugin.link" value="https://github.com/KaartGroup/highwayNameModificationJOSMPlugin"/>
     <property name="plugin.canloadatruntime" value="true"/>
     <!--<property name="plugin.early" value="..."/>-->
