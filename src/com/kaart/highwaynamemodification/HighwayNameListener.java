@@ -1,5 +1,5 @@
 /**
- * 
+ *
  */
 package com.kaart.highwaynamemodification;
 
@@ -7,6 +7,7 @@ import static org.openstreetmap.josm.tools.I18n.tr;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.List;
 import java.util.Map;
 import java.util.function.Predicate;
 
@@ -16,7 +17,10 @@ import org.openstreetmap.josm.actions.AutoScaleAction;
 import org.openstreetmap.josm.command.ChangePropertyCommand;
 import org.openstreetmap.josm.data.UndoRedoHandler;
 import org.openstreetmap.josm.data.osm.DataSet;
+import org.openstreetmap.josm.data.osm.IPrimitive;
 import org.openstreetmap.josm.data.osm.OsmPrimitive;
+import org.openstreetmap.josm.data.osm.Way;
+import org.openstreetmap.josm.data.osm.WaySegment;
 import org.openstreetmap.josm.data.osm.event.AbstractDatasetChangedEvent;
 import org.openstreetmap.josm.data.osm.event.DataChangedEvent;
 import org.openstreetmap.josm.data.osm.event.DataSetListener;
@@ -75,7 +79,7 @@ public class HighwayNameListener implements DataSetListener {
 			changeAddrTags(osm, osm.get("name"), potentialAddrChange, roads);
 		}
 	}
-	
+
 	public void changeAddrTags(OsmPrimitive highway, String newAddrStreet, Collection<OsmPrimitive> primitives, Collection<OsmPrimitive> roads) {
 		String key = HighwayNameModification.NAME.concat(".changeAddrStreetTags");
 		ConditionalOptionPaneUtil.startBulkOperation(key);
@@ -85,9 +89,19 @@ public class HighwayNameListener implements DataSetListener {
 			DataSet ds = osm.getDataSet();
 			ds.setSelected(osm);
 			ds.clearHighlightedWaySegments();
+			List<IPrimitive> zoomPrimitives = new ArrayList<>();
 			OsmPrimitive closest = GeometryCustom.getClosestPrimitive(osm, roads);
 			if (!highway.equals(closest)) continue;
-			AutoScaleAction.zoomTo(ds.getSelected());
+			if (closest instanceof Way) {
+				WaySegment tWay = GeometryCustom.getClosestWaySegment((Way) closest, osm);
+				List<WaySegment> segments = new ArrayList<>();
+				segments.add(tWay);
+				ds.setHighlightedWaySegments(segments);
+				zoomPrimitives.add(tWay.getFirstNode());
+				zoomPrimitives.add(tWay.getSecondNode());
+			}
+			zoomPrimitives.add(osm);
+			AutoScaleAction.zoomTo(zoomPrimitives);
 			final int answer = ConditionalOptionPaneUtil.showOptionDialog(key,
 					MainApplication.getMainFrame(), tr("{0}Should {1} be changed to {2}{3}", "<html><h3>", osm.get("addr:street"), newAddrStreet, "</h3></html>"),
 					tr("Highway name changed"), JOptionPane.YES_NO_CANCEL_OPTION, JOptionPane.QUESTION_MESSAGE,
@@ -114,7 +128,7 @@ public class HighwayNameListener implements DataSetListener {
 			}
 		});
 	}
-	
+
 	@Override
 	public void nodeMoved(NodeMovedEvent event) {
 		// Don't care
