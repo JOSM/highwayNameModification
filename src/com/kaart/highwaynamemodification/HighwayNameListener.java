@@ -5,17 +5,29 @@ package com.kaart.highwaynamemodification;
 
 import static org.openstreetmap.josm.tools.I18n.tr;
 
+import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
+import java.util.concurrent.RunnableFuture;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.function.Predicate;
 
 import javax.swing.JOptionPane;
+import javax.swing.SwingUtilities;
 
 import org.openstreetmap.josm.actions.AutoScaleAction;
+import org.openstreetmap.josm.actions.downloadtasks.DownloadOsmTask;
+import org.openstreetmap.josm.actions.downloadtasks.DownloadParams;
 import org.openstreetmap.josm.command.ChangePropertyCommand;
+import org.openstreetmap.josm.data.Bounds;
 import org.openstreetmap.josm.data.UndoRedoHandler;
+import org.openstreetmap.josm.data.osm.BBox;
+import org.openstreetmap.josm.data.osm.DataIntegrityProblemException;
 import org.openstreetmap.josm.data.osm.DataSet;
 import org.openstreetmap.josm.data.osm.IPrimitive;
 import org.openstreetmap.josm.data.osm.OsmPrimitive;
@@ -32,6 +44,9 @@ import org.openstreetmap.josm.data.osm.event.TagsChangedEvent;
 import org.openstreetmap.josm.data.osm.event.WayNodesChangedEvent;
 import org.openstreetmap.josm.gui.ConditionalOptionPaneUtil;
 import org.openstreetmap.josm.gui.MainApplication;
+import org.openstreetmap.josm.gui.layer.Layer;
+import org.openstreetmap.josm.io.OverpassDownloadReader;
+import org.openstreetmap.josm.tools.Logging;
 
 /**
  * @author Taylor Smock
@@ -51,28 +66,67 @@ public class HighwayNameListener implements DataSetListener {
 
 	@Override
 	public void tagsChanged(TagsChangedEvent event) {
-		OsmPrimitive osm = event.getPrimitive();
-		Map<String, String> originalKeys = event.getOriginalKeys();
+		final OsmPrimitive osm = event.getPrimitive();
+		final Map<String, String> originalKeys = event.getOriginalKeys();
 		if (osm.hasKey("highway") && originalKeys.containsKey("name") && osm.hasKey("name")) {
-			String originalName = originalKeys.get("name");
-			String oldName = osm.get("name");
-			if (originalName.equals(oldName)) return;
-			Collection<OsmPrimitive> potentialAddrChange = osm.getDataSet().getPrimitives(new Predicate<OsmPrimitive>() {
+			final String originalName = originalKeys.get("name");
+			final String newName = osm.get("name");
+			if (originalName.equals(newName)) return;
+			Future<?> additionalWays = getAdditionalWays(osm, originalName);
+			ModifyWays modifyWays = new ModifyWays(additionalWays, new GuiWork(osm, newName, originalName));
+			MainApplication.worker.submit(modifyWays);
+		}
+	}
+
+	private class ModifyWays implements Runnable {
+		Future<?> downloadTask;
+		GuiWork guiWork;
+
+		ModifyWays(Future<?> downloadTask, GuiWork guiWork) {
+			this.downloadTask = downloadTask;
+			this.guiWork = guiWork;
+		}
+
+		@Override
+		public void run() {
+			if (downloadTask != null) {
+				try {
+					downloadTask.get();
+					SwingUtilities.invokeAndWait(guiWork);
+				} catch (InterruptedException | ExecutionException | InvocationTargetException e) {
+					Logging.error(e);
+				}
+			}
+		}
+	}
+
+	private class GuiWork implements Runnable {
+		String originalName;
+		String newName;
+		OsmPrimitive osm;
+
+		GuiWork(OsmPrimitive osm, String newName, String originalName) {
+			this.osm = osm;
+			this.newName = newName;
+			this.originalName = originalName;
+		}
+
+		@Override
+		public void run() {
+			final Collection<OsmPrimitive> potentialAddrChange = osm.getDataSet().getPrimitives(new Predicate<OsmPrimitive>() {
 				@Override
 				public boolean test(OsmPrimitive t) {
-					if (originalName.equals(t.get("addr:street"))) {
+					if (originalName.equals(t.get("addr:street")))
 						return true;
-					}
 					return false;
 				}
 			});
-			Collection<OsmPrimitive> roads = osm.getDataSet().getPrimitives(new Predicate<OsmPrimitive>() {
+			final Collection<OsmPrimitive> roads = osm.getDataSet().getPrimitives(new Predicate<OsmPrimitive>() {
 				@Override
 				public boolean test(OsmPrimitive t) {
 					if (t.hasKey("highway") &&
-							(originalName.equals(t.get("name")) || oldName.equals(t.get("name")))) {
+							(originalName.equals(t.get("name")) || newName.equals(t.get("name"))))
 						return true;
-					}
 					return false;
 				}
 			});
@@ -81,27 +135,32 @@ public class HighwayNameListener implements DataSetListener {
 	}
 
 	public void changeAddrTags(OsmPrimitive highway, String newAddrStreet, Collection<OsmPrimitive> primitives, Collection<OsmPrimitive> roads) {
-		String key = HighwayNameModification.NAME.concat(".changeAddrStreetTags");
+		final String key = HighwayNameModification.NAME.concat(".changeAddrStreetTags");
 		ConditionalOptionPaneUtil.startBulkOperation(key);
-		ArrayList<OsmPrimitive> toChange = new ArrayList<>();
-		for (OsmPrimitive osm : primitives) {
-			if (!osm.hasKey("addr:street")) continue; // TODO throw something
-			DataSet ds = osm.getDataSet();
+		boolean continueZooming = true;
+		final ArrayList<OsmPrimitive> toChange = new ArrayList<>();
+		for (final OsmPrimitive osm : primitives) {
+			if (!osm.hasKey("addr:street")) {
+				continue; // TODO throw something
+			}
+			final DataSet ds = osm.getDataSet();
 			ds.setSelected(osm);
 			ds.clearHighlightedWaySegments();
-			List<IPrimitive> zoomPrimitives = new ArrayList<>();
-			OsmPrimitive closest = GeometryCustom.getClosestPrimitive(osm, roads);
-			if (!highway.equals(closest)) continue;
+			final List<IPrimitive> zoomPrimitives = new ArrayList<>();
+			final OsmPrimitive closest = GeometryCustom.getClosestPrimitive(osm, roads);
+			if (!highway.equals(closest)) {
+				continue;
+			}
 			if (closest instanceof Way) {
-				WaySegment tWay = GeometryCustom.getClosestWaySegment((Way) closest, osm);
-				List<WaySegment> segments = new ArrayList<>();
+				final WaySegment tWay = GeometryCustom.getClosestWaySegment((Way) closest, osm);
+				final List<WaySegment> segments = new ArrayList<>();
 				segments.add(tWay);
 				ds.setHighlightedWaySegments(segments);
 				zoomPrimitives.add(tWay.getFirstNode());
 				zoomPrimitives.add(tWay.getSecondNode());
 			}
 			zoomPrimitives.add(osm);
-			AutoScaleAction.zoomTo(zoomPrimitives);
+			if (continueZooming) AutoScaleAction.zoomTo(zoomPrimitives);
 			final int answer = ConditionalOptionPaneUtil.showOptionDialog(key,
 					MainApplication.getMainFrame(), tr("{0}Should {1} be changed to {2}{3}", "<html><h3>", osm.get("addr:street"), newAddrStreet, "</h3></html>"),
 					tr("Highway name changed"), JOptionPane.YES_NO_CANCEL_OPTION, JOptionPane.QUESTION_MESSAGE,
@@ -111,23 +170,116 @@ public class HighwayNameListener implements DataSetListener {
 				break;
 			case ConditionalOptionPaneUtil.DIALOG_DISABLED_OPTION:
 			case JOptionPane.YES_OPTION:
-				toChange.add(osm);
+				if (ConditionalOptionPaneUtil.isInBulkOperation(key) && ConditionalOptionPaneUtil.getDialogReturnValue(key) >= 0) {
+					toChange.add(osm);
+					continueZooming = false;
+				} else {
+					UndoRedoHandler.getInstance().add(new ChangePropertyCommand(osm, "addr:street", newAddrStreet));
+				}
 			}
 			ds.clearHighlightedWaySegments();
 		}
 		ConditionalOptionPaneUtil.endBulkOperation(key);
 		if (toChange.isEmpty()) return;
-		ChangePropertyCommand command = new ChangePropertyCommand(toChange, "addr:street", newAddrStreet);
-		MainApplication.worker.execute(new Runnable() {
+		AutoScaleAction.zoomTo(toChange);
+		MainApplication.worker.submit(new Runnable() {
 			/**
 			 * This is required due to there still being a lock on the dataset from the
 			 * {@code TagsChangedEvent}.
 			 */
 			@Override
 			public void run() {
-				UndoRedoHandler.getInstance().add(command);
+				UndoRedoHandler.getInstance().add(new ChangePropertyCommand(toChange, "addr:street", newAddrStreet));
 			}
 		});
+	}
+
+	private Future<?> getAdditionalWays(OsmPrimitive highway, String name) {
+		final DataSet ds1 = highway.getDataSet();
+		final BBox bbox = highway.getBBox();
+		bbox.add(bbox.getTopLeftLon() - 0.01, bbox.getTopLeftLat() + 0.01);
+		bbox.add(bbox.getTopLeftLon() + 0.01, bbox.getTopLeftLat() - 0.01);
+		bbox.add(bbox.getBottomRightLon() + 0.01, bbox.getBottomRightLat() - 0.01);
+		bbox.add(bbox.getBottomRightLon() - 0.01, bbox.getBottomRightLat() + 0.01);
+		final Bounds bound = new Bounds(bbox.getTopLeft());
+		bound.extend(bbox.getBottomRight());
+		for (Bounds bounding : ds1.getDataSourceBounds()) {
+			if (bounding.toBBox().bounds(bbox)) return null;
+		}
+		final String overpassQuery = "[out:xml][timeout:90][bbox:{{bbox}}];("
+				.concat("node[\"name\"=\"NAME\"];way[\"name\"=\"NAME\"];")
+				.concat("relation[\"name\"=\"NAME\"];")
+				.concat("node[\"addr:street\"=\"NAME\"];way[\"addr:street\"=\"NAME\"];")
+				.concat("relation[\"addr:street\"=\"NAME\"];);(._;>;);(._;<;);out meta;")
+				.replaceAll("NAME", name);
+
+		final OverpassDownloadReader overpass = new OverpassDownloadReader(bound,
+				OverpassDownloadReader.OVERPASS_SERVER.get(), overpassQuery);
+
+		final DownloadOsmTask download = new DownloadOsmTask();
+		DownloadParams params = new DownloadParams();
+		params.withNewLayer(true);
+		params.withLayerName("haMoyQ4uVVcYTJR4");
+		Future<?> future = download.download(overpass, params, bound, null);
+
+		RunnableFuture<Collection<OsmPrimitive>> mergeData = new RunnableFuture<Collection<OsmPrimitive>>() {
+			private boolean canceled = false;
+			private boolean done = false;
+			private Collection<OsmPrimitive> primitives;
+			public void run() {
+				ds1.beginUpdate();
+				try {
+					future.get();
+					DataSet dataSet = download.getDownloadedData();
+					primitives = dataSet.allPrimitives();
+					new DataSetMergerExtended(ds1, dataSet).merge();
+				} catch (InterruptedException | ExecutionException | DataIntegrityProblemException e) {
+					Logging.error(e);
+				} finally {
+					ds1.endUpdate();
+					List<Layer> layers = MainApplication.getLayerManager().getLayers();
+					for (Layer layer : layers) {
+						if (params.getLayerName().equals(layer.getName())) {
+							MainApplication.getLayerManager().removeLayer(layer);
+						}
+					}
+				}
+				done = true;
+			}
+
+			@Override
+			public boolean cancel(boolean mayInterruptIfRunning) {
+				canceled = true;
+				return false;
+			}
+
+			@Override
+			public boolean isCancelled() {
+				return canceled;
+			}
+
+			@Override
+			public boolean isDone() {
+				return done;
+			}
+
+			@Override
+			public Collection<OsmPrimitive> get() throws InterruptedException, ExecutionException {
+				while (!done) {
+					this.wait();
+				}
+				return primitives;
+			}
+
+			@Override
+			public Collection<OsmPrimitive> get(long timeout, TimeUnit unit)
+					throws InterruptedException, ExecutionException, TimeoutException {
+				this.wait(unit.toMillis(timeout));
+				return primitives;
+			}
+		};
+		MainApplication.worker.submit(mergeData);
+		return mergeData;
 	}
 
 	@Override

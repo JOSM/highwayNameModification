@@ -14,7 +14,6 @@ import org.openstreetmap.josm.data.osm.Relation;
 import org.openstreetmap.josm.data.osm.Way;
 import org.openstreetmap.josm.data.osm.WaySegment;
 import org.openstreetmap.josm.tools.Geometry;
-import org.openstreetmap.josm.tools.Logging;
 
 /**
  * @author Taylor Smock
@@ -25,9 +24,6 @@ public class GeometryCustom {
 		double lowestDistance = Double.MAX_VALUE;
 		OsmPrimitive closest = null;
 		for (OsmPrimitive primitive : primitives) {
-			if (primitive.getUniqueId() == 17001999 || osm.getUniqueId() == 489706962) {
-				Logging.info("We have the id 17001999 ({0}) and 489706962 ({1})", primitive.getUniqueId() == 17001999, osm.getUniqueId() == 489706962);
-			}
 			double distance = getDistance(osm, primitive);
 			if (distance < lowestDistance) {
 				lowestDistance = distance;
@@ -93,11 +89,13 @@ public class GeometryCustom {
 		List<WaySegment> twoSegments = getWaySegments(two);
 		for (WaySegment oneSegment : oneSegments) {
 			for (WaySegment twoSegment : twoSegments) {
+                EastNorth en1 = oneSegment.getFirstNode().getEastNorth();
+                EastNorth en2 = oneSegment.getSecondNode().getEastNorth();
+                EastNorth en3 = twoSegment.getFirstNode().getEastNorth();
+                EastNorth en4 = twoSegment.getSecondNode().getEastNorth();
+                if (en1 == null || en2 == null || en3 == null || en4 == null) continue;
 				EastNorth intersection = Geometry.getSegmentSegmentIntersection(
-						oneSegment.getFirstNode().getEastNorth(),
-						oneSegment.getSecondNode().getEastNorth(),
-						twoSegment.getFirstNode().getEastNorth(),
-						twoSegment.getSecondNode().getEastNorth());
+				        en1, en2, en3, en4);
 				if (intersection != null) return 0.0;
 				double distance = getDistanceSegmentSegment(oneSegment, twoSegment);
 				if (distance < rValue) rValue = distance;
