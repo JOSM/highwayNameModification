@@ -8,6 +8,7 @@ import static org.openstreetmap.josm.tools.I18n.tr;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
@@ -54,6 +55,8 @@ import org.openstreetmap.josm.tools.Logging;
  */
 public class HighwayNameListener implements DataSetListener {
 
+	HashSet<OsmPrimitive> downloadedWays = new HashSet<>();
+
 	@Override
 	public void primitivesAdded(PrimitivesAddedEvent event) {
 		// Don't care
@@ -71,8 +74,7 @@ public class HighwayNameListener implements DataSetListener {
 		if (osm.hasKey("highway") && originalKeys.containsKey("name") && osm.hasKey("name")) {
 			final String originalName = originalKeys.get("name");
 			final String newName = osm.get("name");
-			if (originalName.equals(newName)) return;
-			Future<?> additionalWays = getAdditionalWays(osm, originalName);
+			Future<?> additionalWays = getAdditionalWays(event.getPrimitives(), originalName);
 			ModifyWays modifyWays = new ModifyWays(additionalWays, new GuiWork(osm, newName, originalName));
 			MainApplication.worker.submit(modifyWays);
 		}
@@ -89,13 +91,13 @@ public class HighwayNameListener implements DataSetListener {
 
 		@Override
 		public void run() {
-			if (downloadTask != null) {
-				try {
+			try {
+				if (downloadTask != null) {
 					downloadTask.get();
-					SwingUtilities.invokeAndWait(guiWork);
-				} catch (InterruptedException | ExecutionException | InvocationTargetException e) {
-					Logging.error(e);
 				}
+				SwingUtilities.invokeAndWait(guiWork);
+			} catch (InterruptedException | InvocationTargetException | ExecutionException e) {
+				Logging.error(e);
 			}
 		}
 	}
@@ -124,10 +126,8 @@ public class HighwayNameListener implements DataSetListener {
 			final Collection<OsmPrimitive> roads = osm.getDataSet().getPrimitives(new Predicate<OsmPrimitive>() {
 				@Override
 				public boolean test(OsmPrimitive t) {
-					if (t.hasKey("highway") &&
-							(originalName.equals(t.get("name")) || newName.equals(t.get("name"))))
-						return true;
-					return false;
+					return (t.hasKey("highway") &&
+							(originalName.equals(t.get("name")) || newName.equals(t.get("name"))));
 				}
 			});
 			changeAddrTags(osm, osm.get("name"), potentialAddrChange, roads);
@@ -166,8 +166,6 @@ public class HighwayNameListener implements DataSetListener {
 					tr("Highway name changed"), JOptionPane.YES_NO_CANCEL_OPTION, JOptionPane.QUESTION_MESSAGE,
 					null, null);
 			switch(answer) {
-			default:
-				break;
 			case ConditionalOptionPaneUtil.DIALOG_DISABLED_OPTION:
 			case JOptionPane.YES_OPTION:
 				if (ConditionalOptionPaneUtil.isInBulkOperation(key) && ConditionalOptionPaneUtil.getDialogReturnValue(key) >= 0) {
@@ -176,35 +174,52 @@ public class HighwayNameListener implements DataSetListener {
 				} else {
 					UndoRedoHandler.getInstance().add(new ChangePropertyCommand(osm, "addr:street", newAddrStreet));
 				}
+			default:
 			}
 			ds.clearHighlightedWaySegments();
 		}
 		ConditionalOptionPaneUtil.endBulkOperation(key);
 		if (toChange.isEmpty()) return;
 		AutoScaleAction.zoomTo(toChange);
-		MainApplication.worker.submit(new Runnable() {
-			/**
-			 * This is required due to there still being a lock on the dataset from the
-			 * {@code TagsChangedEvent}.
-			 */
-			@Override
-			public void run() {
-				UndoRedoHandler.getInstance().add(new ChangePropertyCommand(toChange, "addr:street", newAddrStreet));
-			}
-		});
+
+		/**
+		 * This is required due to there still being a lock on the dataset from the
+		 * {@code TagsChangedEvent}.
+		 */
+		MainApplication.worker.submit(() ->
+				UndoRedoHandler.getInstance().add(new ChangePropertyCommand(toChange, "addr:street", newAddrStreet))
+		);
 	}
 
-	private Future<?> getAdditionalWays(OsmPrimitive highway, String name) {
-		final DataSet ds1 = highway.getDataSet();
-		final BBox bbox = highway.getBBox();
-		bbox.add(bbox.getTopLeftLon() - 0.01, bbox.getTopLeftLat() + 0.01);
-		bbox.add(bbox.getTopLeftLon() + 0.01, bbox.getTopLeftLat() - 0.01);
-		bbox.add(bbox.getBottomRightLon() + 0.01, bbox.getBottomRightLat() - 0.01);
-		bbox.add(bbox.getBottomRightLon() - 0.01, bbox.getBottomRightLat() + 0.01);
-		final Bounds bound = new Bounds(bbox.getTopLeft());
-		bound.extend(bbox.getBottomRight());
-		for (Bounds bounding : ds1.getDataSourceBounds()) {
-			if (bounding.toBBox().bounds(bbox)) return null;
+	/**
+	 * Get additional ways that have addr:street/name tags that are the same as
+	 * the old highway name tag
+	 * @param highway The highway whose name is changing
+	 * @param name The original name of the highway
+	 * @return A future which will "finish" when the additional data is downloaded.
+	 * May be {@code null} if we have already downloaded the data for this layer.
+	 */
+	private <T extends OsmPrimitive> Future<?> getAdditionalWays(List<T> highways, String name) {
+		List<T> notDownloaded = new ArrayList<>();
+		for (T highway : highways) {
+			if (downloadedWays.contains(highway)) continue;
+			downloadedWays.add(highway);
+			notDownloaded.add(highway);
+		}
+		if (notDownloaded.isEmpty()) return null;
+		final Bounds bound = new Bounds();
+		final DataSet ds1 = notDownloaded.get(0).getDataSet();
+		for (T highway : notDownloaded) {
+			final BBox bbox = highway.getBBox();
+			bbox.add(bbox.getTopLeftLon() - 0.01, bbox.getTopLeftLat() + 0.01);
+			bbox.add(bbox.getTopLeftLon() + 0.01, bbox.getTopLeftLat() - 0.01);
+			bbox.add(bbox.getBottomRightLon() + 0.01, bbox.getBottomRightLat() - 0.01);
+			bbox.add(bbox.getBottomRightLon() - 0.01, bbox.getBottomRightLat() + 0.01);
+			bound.extend(bbox.getTopLeft());
+			bound.extend(bbox.getBottomRight());
+			for (Bounds bounding : ds1.getDataSourceBounds()) {
+				if (bounding.toBBox().bounds(bbox)) return null;
+			}
 		}
 		final String overpassQuery = "[out:xml][timeout:90][bbox:{{bbox}}];("
 				.concat("node[\"name\"=\"NAME\"];way[\"name\"=\"NAME\"];")
@@ -217,6 +232,7 @@ public class HighwayNameListener implements DataSetListener {
 				OverpassDownloadReader.OVERPASS_SERVER.get(), overpassQuery);
 
 		final DownloadOsmTask download = new DownloadOsmTask();
+		download.setZoomAfterDownload(false);
 		DownloadParams params = new DownloadParams();
 		params.withNewLayer(true);
 		params.withLayerName("haMoyQ4uVVcYTJR4");
@@ -274,7 +290,9 @@ public class HighwayNameListener implements DataSetListener {
 			@Override
 			public Collection<OsmPrimitive> get(long timeout, TimeUnit unit)
 					throws InterruptedException, ExecutionException, TimeoutException {
-				this.wait(unit.toMillis(timeout));
+				synchronized (this) {
+					this.wait(unit.toMillis(timeout));
+				}
 				return primitives;
 			}
 		};
