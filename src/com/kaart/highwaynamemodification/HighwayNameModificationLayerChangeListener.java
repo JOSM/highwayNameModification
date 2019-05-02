@@ -1,5 +1,5 @@
 /**
- * 
+ *
  */
 package com.kaart.highwaynamemodification;
 
@@ -31,18 +31,20 @@ public class HighwayNameModificationLayerChangeListener implements LayerChangeLi
 
 	@Override
 	public void layerRemoving(LayerRemoveEvent e) {
-		if (listeners.containsKey(e.getRemovedLayer())) {
-			if (e.getRemovedLayer() instanceof OsmDataLayer) {
-				OsmDataLayer osmDataLayer = (OsmDataLayer) e.getRemovedLayer();
-				osmDataLayer.getDataSet().removeDataSetListener(listeners.get(osmDataLayer));
-				listeners.remove(osmDataLayer);
-			}
+		if (listeners.containsKey(e.getRemovedLayer()) && e.getRemovedLayer() instanceof OsmDataLayer) {
+			OsmDataLayer osmDataLayer = (OsmDataLayer) e.getRemovedLayer();
+			osmDataLayer.getDataSet().removeDataSetListener(listeners.get(osmDataLayer));
+			listeners.remove(osmDataLayer);
 		}
 	}
 
 	@Override
 	public void layerOrderChanged(LayerOrderChangeEvent e) {
 		// Don't care
+	}
+
+	public HashMap<Layer, HighwayNameListener> getListeners() {
+		return listeners;
 	}
 
 }
