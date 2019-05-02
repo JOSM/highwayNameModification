@@ -8,6 +8,7 @@ import static org.openstreetmap.josm.tools.I18n.tr;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -55,7 +56,7 @@ import org.openstreetmap.josm.tools.Logging;
  */
 public class HighwayNameListener implements DataSetListener {
 
-	HashSet<OsmPrimitive> downloadedWays = new HashSet<>();
+	HashMap<String, HashSet<OsmPrimitive>> downloadedWays = new HashMap<>();
 
 	@Override
 	public void primitivesAdded(PrimitivesAddedEvent event) {
@@ -202,12 +203,15 @@ public class HighwayNameListener implements DataSetListener {
 	private <T extends OsmPrimitive> Future<?> getAdditionalWays(List<T> highways, String name) {
 		List<T> notDownloaded = new ArrayList<>();
 		for (T highway : highways) {
-			if (downloadedWays.contains(highway)) continue;
-			downloadedWays.add(highway);
+			if (downloadedWays.containsKey(name) && downloadedWays.get(name).contains(highway)) continue;
+			HashSet<OsmPrimitive> downloadedHighways = downloadedWays.containsKey(name) ?
+					downloadedWays.get(name) : new HashSet<>();
+			downloadedHighways.add(highway);
 			notDownloaded.add(highway);
+			downloadedWays.put(name, downloadedHighways);
 		}
 		if (notDownloaded.isEmpty()) return null;
-		final Bounds bound = new Bounds();
+		final Bounds bound = new Bounds(notDownloaded.get(0).getBBox().getBottomRight());
 		final DataSet ds1 = notDownloaded.get(0).getDataSet();
 		for (T highway : notDownloaded) {
 			final BBox bbox = highway.getBBox();
@@ -221,15 +225,19 @@ public class HighwayNameListener implements DataSetListener {
 				if (bounding.toBBox().bounds(bbox)) return null;
 			}
 		}
-		final String overpassQuery = "[out:xml][timeout:90][bbox:{{bbox}}];("
-				.concat("node[\"name\"=\"NAME\"];way[\"name\"=\"NAME\"];")
+		final StringBuilder overpassQuery = new StringBuilder();
+		overpassQuery.append("[out:xml][timeout:90][bbox:{{bbox}}];(");
+
+		overpassQuery.append("node[\"name\"=\"NAME\"];way[\"name\"=\"NAME\"];"
 				.concat("relation[\"name\"=\"NAME\"];")
 				.concat("node[\"addr:street\"=\"NAME\"];way[\"addr:street\"=\"NAME\"];")
-				.concat("relation[\"addr:street\"=\"NAME\"];);(._;>;);(._;<;);out meta;")
-				.replaceAll("NAME", name);
+				.concat("relation[\"addr:street\"=\"NAME\"];);")
+				.replaceAll("NAME", name));
+
+		overpassQuery.append("(._;>;);(._;<;);out meta;");
 
 		final OverpassDownloadReader overpass = new OverpassDownloadReader(bound,
-				OverpassDownloadReader.OVERPASS_SERVER.get(), overpassQuery);
+				OverpassDownloadReader.OVERPASS_SERVER.get(), overpassQuery.toString());
 
 		final DownloadOsmTask download = new DownloadOsmTask();
 		download.setZoomAfterDownload(false);
