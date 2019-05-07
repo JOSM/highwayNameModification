@@ -75,6 +75,7 @@ public class HighwayNameListener implements DataSetListener {
 		if (osm.hasKey("highway") && originalKeys.containsKey("name") && osm.hasKey("name")) {
 			final String originalName = originalKeys.get("name");
 			final String newName = osm.get("name");
+			if (originalName.equals(newName)) return;
 			Future<?> additionalWays = getAdditionalWays(event.getPrimitives(), originalName);
 			ModifyWays modifyWays = new ModifyWays(additionalWays, new GuiWork(osm, newName, originalName));
 			MainApplication.worker.submit(modifyWays);
