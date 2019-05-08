@@ -51,6 +51,8 @@ public class DownloadAdditionalWays {
 		HashSet<String> otherNames = new HashSet<>();
 		HashMap<String, HashSet<OsmPrimitive>> tDownloadedWays = new HashMap<>();
 		OsmDataLayer layer = MainApplication.getLayerManager().getActiveDataLayer();
+		if (downloadedLayerWays.containsKey(layer))
+			downloadedLayerWays.get(layer);
 		HashMap<String, HashSet<OsmPrimitive>> downloadedWays = downloadedLayerWays.containsKey(layer) ? downloadedLayerWays.get(layer) : new HashMap<>();
 		for (T highway : highways) {
 			boolean alreadyDownloaded = false;
@@ -69,6 +71,7 @@ public class DownloadAdditionalWays {
 			if (!alreadyDownloaded)
 				notDownloaded.add(highway);
 		}
+		downloadedLayerWays.put(layer, downloadedWays);
 		if (notDownloaded.isEmpty()) return null;
 		T initialWay = notDownloaded.iterator().next();
 		final Bounds bound = new Bounds(initialWay.getBBox().getBottomRight());
@@ -86,7 +89,7 @@ public class DownloadAdditionalWays {
 			}
 		}
 		final StringBuilder overpassQuery = new StringBuilder();
-		overpassQuery.append("[out:xml][timeout:30][bbox:{{bbox}}];(");
+		overpassQuery.append("[out:xml][timeout:15][bbox:{{bbox}}];(");
 
 		otherNames.addAll(Arrays.asList(oldNames));
 		for (String tName : otherNames) {

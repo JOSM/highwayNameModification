@@ -151,7 +151,7 @@ public class ModifyWays implements Runnable {
 			final Collection<OsmPrimitive> initialSelection = ds.getSelected();
 			for (final OsmPrimitive osm : primitives) {
 				final OsmPrimitive closest = Geometry.getClosestPrimitive(osm, roads);
-				if (!osm.hasKey("addr:street") || !highway.equals(closest)) {
+				if (!osm.hasKey("addr:street") || !highway.equals(closest) || osm.get("addr:street").equals(newAddrStreet)) {
 					continue; // TODO throw something
 				}
 				ds.setSelected(osm);
