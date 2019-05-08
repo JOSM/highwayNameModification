@@ -96,6 +96,7 @@ public class ModifyWays implements Runnable {
 				}
 			}
 		} catch (ExecutionException | InterruptedException e) {
+			Thread.currentThread().interrupt();
 			Logging.error(e);
 		}
 	}
@@ -126,6 +127,7 @@ public class ModifyWays implements Runnable {
 		try {
 			SwingUtilities.invokeAndWait(dialog);
 		} catch (InvocationTargetException | InterruptedException e) {
+			Thread.currentThread().interrupt();
 			Logging.debug(e);
 		}
 	}

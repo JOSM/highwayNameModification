@@ -129,6 +129,9 @@ public class DownloadAdditionalWays {
 					primitives = dataSet.allPrimitives();
 					new DataSetMergerExtended(ds1, dataSet).merge();
 				} catch (InterruptedException | ExecutionException | DataIntegrityProblemException e) {
+					if (e instanceof InterruptedException) {
+						Thread.currentThread().interrupt();
+					}
 					Logging.error(e);
 				} finally {
 					ds1.endUpdate();
@@ -173,7 +176,12 @@ public class DownloadAdditionalWays {
 			public Collection<OsmPrimitive> get(long timeout, TimeUnit unit)
 					throws InterruptedException, ExecutionException, TimeoutException {
 				synchronized (this) {
-					this.wait(unit.toMillis(timeout));
+					long waitTime = 0;
+					timeout = unit.toMillis(timeout);
+					while (!done || waitTime < timeout) {
+						this.wait(timeout / 100);
+						waitTime += timeout / 100;
+					}
 				}
 				return primitives;
 			}

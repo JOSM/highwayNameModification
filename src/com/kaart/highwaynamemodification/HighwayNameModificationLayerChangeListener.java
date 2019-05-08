@@ -4,6 +4,7 @@
 package com.kaart.highwaynamemodification;
 
 import java.util.HashMap;
+import java.util.Map;
 
 import org.openstreetmap.josm.gui.layer.Layer;
 import org.openstreetmap.josm.gui.layer.LayerManager.LayerAddEvent;
@@ -43,7 +44,7 @@ public class HighwayNameModificationLayerChangeListener implements LayerChangeLi
 		// Don't care
 	}
 
-	public HashMap<Layer, HighwayNameListener> getListeners() {
+	public Map<Layer, HighwayNameListener> getListeners() {
 		return listeners;
 	}
 
