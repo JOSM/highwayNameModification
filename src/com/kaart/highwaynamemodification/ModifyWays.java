@@ -107,7 +107,7 @@ public class ModifyWays implements Runnable {
 	public void run() {
 		try {
 			synchronized (this) {
-				if (downloadTask) {
+				if (downloadTask && !DownloadAdditionalWays.checkIfDownloaded(wayChangingName)) {
 					DownloadAdditionalAsk ask = new DownloadAdditionalAsk();
 					SwingUtilities.invokeAndWait(ask);
 					if (ask.get()) {

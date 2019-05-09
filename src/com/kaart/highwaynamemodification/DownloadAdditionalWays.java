@@ -39,6 +39,24 @@ public class DownloadAdditionalWays {
 	}
 
 	/**
+	 * Check if we have already downloaded a way
+	 * @param ways Ways that we (may) have downloaded
+	 * @return true if all of the ways have been downloaded on the same layer
+	 */
+	public static <T extends OsmPrimitive> boolean checkIfDownloaded(Collection<T> ways) {
+		boolean rValue = false;
+		for (HashMap<String, HashSet<OsmPrimitive>> map : downloadedLayerWays.values()) {
+			for (HashSet<OsmPrimitive> set : map.values()) {
+				if (set.containsAll(ways)) {
+					rValue = true;
+					break;
+				}
+			}
+		}
+		return rValue;
+	}
+
+	/**
 	 * Get additional ways that have addr:street/name tags that are the same as
 	 * the old highway name tag
 	 * @param highway The highway whose name is changing
