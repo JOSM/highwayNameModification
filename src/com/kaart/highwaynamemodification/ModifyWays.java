@@ -8,8 +8,6 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Future;
 import javax.swing.JOptionPane;
 import javax.swing.SwingUtilities;
 
@@ -31,7 +29,9 @@ public class ModifyWays implements Runnable {
 
 	HashMap<String, HashSet<OsmPrimitive>> downloadedWays = new HashMap<>();
 
-	Future<?> downloadTask;
+	static final String ADDRSTREET = "addr:street";
+
+	boolean downloadTask;
 
 	Collection<? extends OsmPrimitive> wayChangingName;
 	String originalName;
@@ -49,8 +49,8 @@ public class ModifyWays implements Runnable {
 		return InstanceHolder.INSTANCE;
 	}
 
-	public void setDownloadTask(Future<?> downloadTask) {
-		this.downloadTask = downloadTask;
+	public void setDownloadTask(boolean b) {
+		this.downloadTask = b;
 	}
 
 	public void setNameChangeInformation(OsmPrimitive osm, String originalName) {
@@ -76,12 +76,44 @@ public class ModifyWays implements Runnable {
 		ignoreNewName = ignoreNameChange;
 	}
 
+	private class DownloadAdditionalAsk implements Runnable {
+		private boolean done = false;
+		private boolean download = false;
+		@Override
+		public void run() {
+			final String key = HighwayNameModification.NAME.concat(".downloadAdditional");
+			final int answer = ConditionalOptionPaneUtil.showOptionDialog(key,
+					MainApplication.getMainFrame(), tr("{0}Should we download additional information for {1}? (WARNING: May be buggy!){2}", "<html><h3>", HighwayNameModification.NAME, "</h3></html>"),
+					tr("Download additional information"), JOptionPane.YES_NO_CANCEL_OPTION, JOptionPane.QUESTION_MESSAGE,
+					null, null);
+			switch(answer) {
+			case ConditionalOptionPaneUtil.DIALOG_DISABLED_OPTION:
+			case JOptionPane.YES_OPTION:
+				download = true;
+			// Fall through
+			default:
+			}
+			done = true;
+		}
+
+		public boolean get() throws InterruptedException {
+			while (!done) {
+				Thread.sleep(100);
+			}
+			return download;
+		}
+	}
 	@Override
 	public void run() {
 		try {
 			synchronized (this) {
-				if (downloadTask != null) {
-					downloadTask.get();
+				if (downloadTask) {
+					DownloadAdditionalAsk ask = new DownloadAdditionalAsk();
+					SwingUtilities.invokeAndWait(ask);
+					if (ask.get()) {
+						String[] oldNames = originalName != null ? new String[] {originalName} : null;
+						DownloadAdditionalWays.getAdditionalWays(wayChangingName, oldNames);
+					}
 				}
 				for (OsmPrimitive osm : wayChangingName) {
 					if (originalName != null) {
@@ -95,7 +127,7 @@ public class ModifyWays implements Runnable {
 					}
 				}
 			}
-		} catch (ExecutionException | InterruptedException e) {
+		} catch (InterruptedException | InvocationTargetException e) {
 			Thread.currentThread().interrupt();
 			Logging.error(e);
 		}
@@ -103,7 +135,7 @@ public class ModifyWays implements Runnable {
 
 	private void doRealRun(final OsmPrimitive osm, final String name) {
 		final String newName = osm.get("name");
-		final Collection<OsmPrimitive> potentialAddrChange = osm.getDataSet().getPrimitives(t -> name.equals(t.get("addr:street")));
+		final Collection<OsmPrimitive> potentialAddrChange = osm.getDataSet().getPrimitives(t -> name.equals(t.get(ADDRSTREET)));
 		final Collection<OsmPrimitive> roads = osm.getDataSet().getPrimitives(t -> (t.hasKey("highway") &&
 						(name.equals(t.get("name")) || newName.equals(t.get("name")))));
 		changeAddrTags(osm, name, potentialAddrChange, roads);
@@ -118,7 +150,7 @@ public class ModifyWays implements Runnable {
 	 */
 	private static void changeAddrTags(OsmPrimitive highway, String oldAddrStreet, Collection<OsmPrimitive> primitives, Collection<OsmPrimitive> roads) {
 		if (primitives == null || primitives.isEmpty()) {
-			primitives = highway.getDataSet().getPrimitives(t -> t.hasKey("addr:street") && oldAddrStreet.equals(t.get("addr:street")));
+			primitives = highway.getDataSet().getPrimitives(t -> t.hasKey(ADDRSTREET) && oldAddrStreet.equals(t.get(ADDRSTREET)));
 		}
 		if (roads == null || roads.isEmpty()) {
 			roads = highway.getDataSet().getPrimitives(t -> t.hasKey("highway") && t.hasKey("name") && oldAddrStreet.equals(t.get("name")));
@@ -153,7 +185,7 @@ public class ModifyWays implements Runnable {
 			final Collection<OsmPrimitive> initialSelection = ds.getSelected();
 			for (final OsmPrimitive osm : primitives) {
 				final OsmPrimitive closest = Geometry.getClosestPrimitive(osm, roads);
-				if (!osm.hasKey("addr:street") || !highway.equals(closest) || osm.get("addr:street").equals(newAddrStreet)) {
+				if (!osm.hasKey(ADDRSTREET) || !highway.equals(closest) || osm.get(ADDRSTREET).equals(newAddrStreet)) {
 					continue; // TODO throw something
 				}
 				ds.setSelected(osm);
@@ -170,7 +202,7 @@ public class ModifyWays implements Runnable {
 				zoomPrimitives.add(osm);
 				if (continueZooming) AutoScaleAction.zoomTo(zoomPrimitives);
 				final int answer = ConditionalOptionPaneUtil.showOptionDialog(key,
-						MainApplication.getMainFrame(), tr("{0}Should {1} be changed to {2}{3}", "<html><h3>", osm.get("addr:street"), newAddrStreet, "</h3></html>"),
+						MainApplication.getMainFrame(), tr("{0}Should {1} be changed to {2}{3}", "<html><h3>", osm.get(ADDRSTREET), newAddrStreet, "</h3></html>"),
 						tr("Highway name changed"), JOptionPane.YES_NO_CANCEL_OPTION, JOptionPane.QUESTION_MESSAGE,
 						null, null);
 				switch(answer) {
@@ -180,7 +212,7 @@ public class ModifyWays implements Runnable {
 						toChange.add(osm);
 						continueZooming = false;
 					} else {
-						UndoRedoHandler.getInstance().add(new ChangePropertyCommand(osm, "addr:street", newAddrStreet));
+						UndoRedoHandler.getInstance().add(new ChangePropertyCommand(osm, ADDRSTREET, newAddrStreet));
 					}
 				// fall through
 				default:
@@ -192,7 +224,7 @@ public class ModifyWays implements Runnable {
 			if (toChange.isEmpty()) return;
 			AutoScaleAction.zoomTo(toChange);
 
-			UndoRedoHandler.getInstance().add(new ChangePropertyCommand(toChange, "addr:street", newAddrStreet));
+			UndoRedoHandler.getInstance().add(new ChangePropertyCommand(toChange, ADDRSTREET, newAddrStreet));
 		}
 	}
 }

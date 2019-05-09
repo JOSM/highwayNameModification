@@ -128,11 +128,11 @@ public class DownloadAdditionalWays {
 					DataSet dataSet = download.getDownloadedData();
 					primitives = dataSet.allPrimitives();
 					new DataSetMergerExtended(ds1, dataSet).merge();
-				} catch (InterruptedException | ExecutionException | DataIntegrityProblemException e) {
-					if (e instanceof InterruptedException) {
-						Thread.currentThread().interrupt();
-					}
+				} catch (ExecutionException | DataIntegrityProblemException e) {
 					Logging.error(e);
+				} catch (InterruptedException e) {
+					Logging.error(e);
+					Thread.currentThread().interrupt();
 				} finally {
 					ds1.endUpdate();
 					List<Layer> layers = MainApplication.getLayerManager().getLayers();
@@ -165,10 +165,11 @@ public class DownloadAdditionalWays {
 			@Override
 			public Collection<OsmPrimitive> get() throws InterruptedException, ExecutionException {
 				synchronized (this) {
-					while (!done) {
-						this.wait();
+					while (!done && !canceled) {
+						this.wait(100);
 					}
 				}
+				if (canceled) throw new InterruptedException();
 				return primitives;
 			}
 
@@ -178,11 +179,13 @@ public class DownloadAdditionalWays {
 				synchronized (this) {
 					long waitTime = 0;
 					timeout = unit.toMillis(timeout);
-					while (!done || waitTime < timeout) {
+					while (!done && waitTime < timeout) {
 						this.wait(timeout / 100);
 						waitTime += timeout / 100;
 					}
+					if (waitTime >= timeout) throw new TimeoutException();
 				}
+				if (canceled) throw new InterruptedException();
 				return primitives;
 			}
 		};

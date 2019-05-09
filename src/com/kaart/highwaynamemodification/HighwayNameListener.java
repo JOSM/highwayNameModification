@@ -43,7 +43,7 @@ public class HighwayNameListener implements DataSetListener {
 			String oldName = originalKeys.get("name");
 			if (newName.equals(oldName)) return;
 			modifyWays.setNameChangeInformation(event.getPrimitives(), oldName);
-			modifyWays.setDownloadTask(DownloadAdditionalWays.getAdditionalWays(event.getPrimitives(), oldName));
+			modifyWays.setDownloadTask(true);
 			MainApplication.worker.submit(modifyWays);
 		}
 	}

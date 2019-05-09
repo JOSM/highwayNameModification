@@ -39,7 +39,7 @@ public class HighwayNameChangeAction extends AbstractAction {
 		Collection<OsmPrimitive> selection = ds.getAllSelected();
 		ModifyWays modifyWays = hListener.getModifyWays();
 		modifyWays.setNameChangeInformation(selection, null, true);
-		modifyWays.setDownloadTask(DownloadAdditionalWays.getAdditionalWays(selection));
+		modifyWays.setDownloadTask(true);
 		MainApplication.worker.submit(modifyWays);
 	}
 
