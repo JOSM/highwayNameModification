@@ -76,7 +76,7 @@ public class ModifyWays implements Runnable {
 		ignoreNewName = ignoreNameChange;
 	}
 
-	private class DownloadAdditionalAsk implements Runnable {
+	private static class DownloadAdditionalAsk implements Runnable {
 		private boolean done = false;
 		private boolean download = false;
 		@Override
@@ -175,6 +175,7 @@ public class ModifyWays implements Runnable {
 			this.roads = roads;
 		}
 
+		@Override
 		public void run() {
 			String newAddrStreet = highway.get("name");
 			final String key = HighwayNameModification.NAME.concat(".changeAddrStreetTags");
