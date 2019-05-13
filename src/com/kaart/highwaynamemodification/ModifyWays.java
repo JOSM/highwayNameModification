@@ -66,7 +66,6 @@ public class ModifyWays implements Runnable {
 	/**
 	 * Initialize a new ModifyWays method
 	 * @param osmCollection The collection of ways that are changing names
-	 * @param newName The new name of the ways
 	 * @param originalName The old name of the ways
 	 * @param ignoreNameChange If true, don't stop if the new name is the same as the old name
 	 */

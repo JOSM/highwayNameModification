@@ -41,6 +41,7 @@ public class DownloadAdditionalWays {
 	/**
 	 * Check if we have already downloaded a way
 	 * @param ways Ways that we (may) have downloaded
+	 * @param <T> Some class that extends {@link OsmPrimitive}
 	 * @return true if all of the ways have been downloaded on the same layer
 	 */
 	public static <T extends OsmPrimitive> boolean checkIfDownloaded(Collection<T> ways) {
@@ -59,8 +60,9 @@ public class DownloadAdditionalWays {
 	/**
 	 * Get additional ways that have addr:street/name tags that are the same as
 	 * the old highway name tag
-	 * @param highway The highway whose name is changing
-	 * @param oldNames The original name of the highway
+	 * @param highways The highways whose names are changing
+	 * @param oldNames The original name(s) of the highway
+	 * @param <T> Some class that extends {@link OsmPrimitive}
 	 * @return A future which will "finish" when the additional data is downloaded.
 	 * May be {@code null} if we have already downloaded the data for this layer.
 	 */
