@@ -38,7 +38,7 @@ tasks.withType(JavaCompile).configureEach {
   }
 }
 
-archivesBaseName = "highwaynamemodification"
+archivesBaseName = "highwayNameModification"
 def gitlabGroup = "gokaart"
 def gitlabRepositoryName = "JOSM_highwayNameModification"
 
