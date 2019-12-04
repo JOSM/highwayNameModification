@@ -11,10 +11,10 @@ plugins {
   id "jacoco"
   id "maven-publish"
   id "pmd"
-  id "com.github.ben-manes.versions" version "0.26.0"
-  id "com.github.spotbugs" version "2.0.0"
-  id "org.openstreetmap.josm" version "0.6.4"
-  id "net.ltgt.errorprone" version "1.0.0"
+  id "com.github.ben-manes.versions" version "0.27.0"
+  id "com.github.spotbugs" version "3.0.0"
+  id "org.openstreetmap.josm" version "0.6.5"
+  id "net.ltgt.errorprone" version "1.1.1"
   //id 'de.aaschmid.cpd' version '2.0'
 }
 
@@ -45,14 +45,14 @@ def gitlabRepositoryName = "JOSM_highwayNameModification"
 
 def versions = [
   awaitility: "4.0.1",
-  errorprone: "2.3.3",
+  errorprone: "2.3.4",
   jacoco: "0.8.5",
   jmockit: "1.46",
   junit: "5.5.2",
-  pmd: "6.6.0",
-  spotbugs: "3.1.12",
-  wiremock: "2.25.0",
-  findsecbugs: "1.9.0",
+  pmd: "6.19.0",
+  spotbugs: "4.0.0-beta4",
+  wiremock: "2.25.1",
+  findsecbugs: "1.10.1",
 ]
 
 repositories {
@@ -89,7 +89,13 @@ test {
     jvmArgs("-javaagent:${classpath.find { it.name.contains("jmockit") }.absolutePath}")
   }
   useJUnitPlatform()
-  testLogging.exceptionFormat = 'full'
+  testLogging {
+    exceptionFormat "full"
+    events "skipped", "failed"
+    info {
+      showStandardStreams true
+    }
+  }
 }
 
 sourceSets {
@@ -106,6 +112,7 @@ tasks.processResources {
   from("$projectDir/LICENSE")
   from("$projectDir/README.md")
   from("$projectDir/src/resources")
+  from("$projectDir/src/main/resources")
 }
 
 josm {

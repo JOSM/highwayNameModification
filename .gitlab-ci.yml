@@ -11,17 +11,19 @@ cache:
 #############################
 # Various additional Checks #
 #############################
-#include:
-#  - template: SAST.gitlab-ci.yml
-#  - template: Code-Quality.gitlab-ci.yml
+include:
+  - template: Code-Quality.gitlab-ci.yml
+  - template: SAST.gitlab-ci.yml
 #  - template: Dependency-Scanning.gitlab-ci.yml
 #  - template: Container-Scanning.gitlab-ci.yml
 #  - template: DAST.gitlab-ci.yml
 #  - template: License-Management.gitlab-ci.yml
 
-#sast:
-#  variables:
-#    GRADLE_PATH: "./gradlew"
+sast:
+  variables: {}
+  variables:
+    GRADLE_PATH: "./gradlew"
+    FAIL_NEVER: 1
 #    CI_DEBUG_TRACE: "true"
 
 ###############
@@ -31,7 +33,7 @@ cache:
 assemble:
   stage: build
   script:
-  - ./gradlew assemble --stacktrace
+  - ./gradlew assemble
   artifacts:
     paths:
     - build/
@@ -40,7 +42,7 @@ assemble with java 11:
   stage: build
   image: registry.gitlab.com/josm/docker-library/openjdk-11-josmplugin:latest
   script:
-    - ./gradlew assemble --stacktrace
+    - ./gradlew assemble
   artifacts:
     paths:
       - build/
@@ -49,7 +51,7 @@ assemble with java 12:
   stage: build
   image: registry.gitlab.com/josm/docker-library/openjdk-12-josmplugin:latest
   script:
-    - ./gradlew assemble --stacktrace
+    - ./gradlew assemble
   artifacts:
     paths:
       - build/
@@ -59,11 +61,22 @@ assemble with java 13:
   stage: build
   image: registry.gitlab.com/josm/docker-library/openjdk-13-josmplugin:latest
   script:
-    - ./gradlew assemble --stacktrace
+    - ./gradlew assemble
   artifacts:
     paths:
       - build/
   allow_failure: true
+
+assemble with java 14:
+  stage: build
+  image: registry.gitlab.com/josm/docker-library/openjdk-14-josmplugin:latest
+  script:
+    - ./gradlew assemble
+  artifacts:
+    paths:
+      - build/
+  allow_failure: true
+
 
 ##############
 # Test stage #
@@ -72,14 +85,24 @@ assemble with java 13:
 build:
   stage: test
   script:
-  - ./gradlew build generateSnapshotUpdateSite --stacktrace
+  - ./gradlew build generatePot generateSnapshotUpdateSite #--info
+  artifacts:
+    paths:
+    - build
+  dependencies:
+  - assemble
+
+test:
+  stage: test
+  script:
+  - ./gradlew check --stacktrace --continue #--info
+  - ./gradlew jacocoTestReport
+  - ./gradlew jacocoTestCoverageVerification
   artifacts:
     paths:
     - build
     reports:
-      codequality: build/reports/pmd/main.xml
-      sast: build/reports/spotbugs/main.html
-      #junit: build/test-results/test/TEST-*.xml
+      junit: build/test-results/test/TEST-*.xml
   dependencies:
   - assemble
 
@@ -101,7 +124,7 @@ build with java 11:
   stage: test
   image: registry.gitlab.com/josm/docker-library/openjdk-11-josmplugin:latest
   script:
-    - ./gradlew build --stacktrace
+    - ./gradlew build
   dependencies:
     - assemble with java 11
   allow_failure: true # due to copy-paste-detection
@@ -110,7 +133,7 @@ build with java 12:
   stage: test
   image: registry.gitlab.com/josm/docker-library/openjdk-12-josmplugin:latest
   script:
-    - ./gradlew build --stacktrace
+    - ./gradlew build
   dependencies:
     - assemble with java 12
   allow_failure: true
@@ -119,10 +142,21 @@ build with java 13:
   stage: test
   image: registry.gitlab.com/josm/docker-library/openjdk-13-josmplugin:latest
   script:
-    - ./gradlew build --stacktrace
+    - ./gradlew build
   dependencies:
     - assemble with java 13
   allow_failure: true
+
+build with java 14:
+  stage: test
+  image: registry.gitlab.com/josm/docker-library/openjdk-14-josmplugin:latest
+  script:
+    - ./gradlew build
+  dependencies:
+    - assemble with java 14
+  allow_failure: true
+  only:
+    - schedules
 
 ################
 # Deploy stage #
@@ -177,6 +211,8 @@ release:
     - tags
     variables:
     - $SSH_PRIVATE_DEPLOY_KEY
+  except:
+    - schedules
 
 publish master update site:
   stage: deploy
@@ -201,6 +237,8 @@ publish master update site:
     - master
     variables:
     - $SSH_PRIVATE_DEPLOY_KEY
+  except:
+    - schedules
 
 publish to / GitLab.com packages:
   stage: deploy
@@ -215,3 +253,5 @@ publish to / GitLab.com packages:
   only:
     refs:
     - tags
+  except:
+    - schedules
