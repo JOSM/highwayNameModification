@@ -14,7 +14,7 @@ import org.openstreetmap.josm.tools.ImageProvider;
  */
 public class HighwayNameModification extends Plugin {
 	public static final String NAME = "Highway Name Modification";
-	public static final String PLUGIN_IMAGE = "addresses.png";
+	public static final String PLUGIN_IMAGE = "deltasignmod";
 
 	public HighwayNameModification(PluginInformation info) {
 		super(info);
