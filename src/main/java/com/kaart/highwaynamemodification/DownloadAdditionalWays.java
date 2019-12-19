@@ -19,6 +19,7 @@ import org.openstreetmap.josm.data.Bounds;
 import org.openstreetmap.josm.data.osm.BBox;
 import org.openstreetmap.josm.data.osm.DataIntegrityProblemException;
 import org.openstreetmap.josm.data.osm.DataSet;
+import org.openstreetmap.josm.data.osm.DataSetMerger;
 import org.openstreetmap.josm.data.osm.OsmPrimitive;
 import org.openstreetmap.josm.gui.MainApplication;
 import org.openstreetmap.josm.gui.layer.Layer;
@@ -147,7 +148,7 @@ public class DownloadAdditionalWays {
 					future.get();
 					DataSet dataSet = download.getDownloadedData();
 					primitives = dataSet.allPrimitives();
-					new DataSetMergerExtended(ds1, dataSet).merge();
+					new DataSetMerger(ds1, dataSet).merge(null, false);
 				} catch (ExecutionException | DataIntegrityProblemException e) {
 					Logging.error(e);
 				} catch (InterruptedException e) {

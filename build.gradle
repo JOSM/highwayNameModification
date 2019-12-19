@@ -116,6 +116,9 @@ tasks.processResources {
 }
 
 josm {
+  manifest {
+    oldVersionDownloadLink 15038, "v0.0.9,", new URL("https://gokaart.gitlab.io/JOSM_highwayNameModification/dist/v0.0.9/highwayNameModification.jar")
+  }
   i18n {
     pathTransformer = getPathTransformer("gitlab.com/${gitlabGroup}/${gitlabRepositoryName}/blob")
   }
