@@ -18,34 +18,39 @@ import org.openstreetmap.josm.gui.layer.OsmDataLayer;
  *
  */
 public class HighwayNameModificationLayerChangeListener implements LayerChangeListener {
-	HashMap<Layer, HighwayNameListener> listeners = new HashMap<>();
-	@Override
-	public void layerAdded(LayerAddEvent e) {
-		Layer layer = e.getAddedLayer();
-		if (layer instanceof OsmDataLayer && !listeners.containsKey(layer)) {
-			OsmDataLayer osmDataLayer = (OsmDataLayer) layer;
-			HighwayNameListener listener = new HighwayNameListener();
-			listeners.put(layer, listener);
-			osmDataLayer.getDataSet().addDataSetListener(listener);
-		}
-	}
+    HashMap<Layer, HighwayNameListener> listeners = new HashMap<>();
 
-	@Override
-	public void layerRemoving(LayerRemoveEvent e) {
-		if (listeners.containsKey(e.getRemovedLayer()) && e.getRemovedLayer() instanceof OsmDataLayer) {
-			OsmDataLayer osmDataLayer = (OsmDataLayer) e.getRemovedLayer();
-			osmDataLayer.getDataSet().removeDataSetListener(listeners.get(osmDataLayer));
-			listeners.remove(osmDataLayer);
-		}
-	}
+    @Override
+    public void layerAdded(LayerAddEvent e) {
+        Layer layer = e.getAddedLayer();
+        if (layer instanceof OsmDataLayer && !listeners.containsKey(layer)) {
+            OsmDataLayer osmDataLayer = (OsmDataLayer) layer;
+            HighwayNameListener listener = new HighwayNameListener();
+            listeners.put(layer, listener);
+            osmDataLayer.getDataSet().addDataSetListener(listener);
+        }
+    }
 
-	@Override
-	public void layerOrderChanged(LayerOrderChangeEvent e) {
-		// Don't care
-	}
+    @Override
+    public void layerRemoving(LayerRemoveEvent e) {
+        if (listeners.containsKey(e.getRemovedLayer()) && e.getRemovedLayer() instanceof OsmDataLayer) {
+            OsmDataLayer osmDataLayer = (OsmDataLayer) e.getRemovedLayer();
+            osmDataLayer.getDataSet().removeDataSetListener(listeners.get(osmDataLayer));
+            listeners.remove(osmDataLayer);
+        }
+    }
 
-	public Map<Layer, HighwayNameListener> getListeners() {
-		return listeners;
-	}
+    @Override
+    public void layerOrderChanged(LayerOrderChangeEvent e) {
+        // Don't care
+    }
+
+    /**
+     * @return A map of Layers to listeners, so we can get the listener for a
+     *         specific layer
+     */
+    public Map<Layer, HighwayNameListener> getListeners() {
+        return listeners;
+    }
 
 }
