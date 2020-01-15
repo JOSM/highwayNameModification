@@ -15,7 +15,8 @@ import org.openstreetmap.josm.gui.layer.OsmDataLayer;
 
 /**
  * @author Taylor Smock
- *
+ * tests written
+ * 
  */
 public class HighwayNameModificationLayerChangeListener implements LayerChangeListener {
     HashMap<Layer, HighwayNameListener> listeners = new HashMap<>();
