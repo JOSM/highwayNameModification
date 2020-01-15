@@ -1,4 +1,4 @@
 /bin/
 .gradle
-.test/unit/com/kaart/.DS_Store
+test/unit/com/kaart/.DS_Store
 gradle/docs/
