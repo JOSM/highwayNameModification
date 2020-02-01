@@ -10,13 +10,11 @@ import org.junit.Test;
 import org.junit.Before;
 
 import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.options;
-import org.openstreetmap.josm.data.osm.OsmPrimitive;
 import org.openstreetmap.josm.data.osm.Way;
 import org.openstreetmap.josm.testutils.JOSMTestRules;
 
 import com.github.tomakehurst.wiremock.WireMockServer;
 
-import org.openstreetmap.josm.data.osm.event.DataChangedEvent;
 import org.openstreetmap.josm.spi.preferences.Config;
 import org.openstreetmap.josm.TestUtils;
 import org.openstreetmap.josm.data.coor.LatLon;
