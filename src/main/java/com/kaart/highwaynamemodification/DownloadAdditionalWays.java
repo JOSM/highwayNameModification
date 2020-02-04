@@ -157,8 +157,10 @@ public class DownloadAdditionalWays {
                 try {
                     future.get();
                     DataSet dataSet = download.getDownloadedData();
-                    primitives = dataSet.allPrimitives();
-                    new DataSetMerger(ds1, dataSet).merge(null, false);
+                    if (dataSet != null) {
+                        primitives = dataSet.allPrimitives();
+                        new DataSetMerger(ds1, dataSet).merge(null, false);
+                    }
                 } catch (ExecutionException | DataIntegrityProblemException e) {
                     Logging.error(e);
                 } catch (InterruptedException e) {
