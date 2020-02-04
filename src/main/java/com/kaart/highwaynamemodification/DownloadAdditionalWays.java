@@ -223,7 +223,7 @@ public class DownloadAdditionalWays {
                 return primitives;
             }
         };
-        MainApplication.worker.submit(mergeData);
+        MainApplication.worker.execute(mergeData);
         return mergeData;
     }
 }

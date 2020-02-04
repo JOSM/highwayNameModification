@@ -11,9 +11,7 @@ import javax.swing.ImageIcon;
 
 import org.openstreetmap.josm.data.osm.DataSet;
 import org.openstreetmap.josm.data.osm.OsmPrimitive;
-import org.openstreetmap.josm.data.osm.event.DatasetEventManager;
 import org.openstreetmap.josm.gui.MainApplication;
-import org.openstreetmap.josm.gui.layer.OsmDataLayer;
 
 /**
  * @author tsmock
@@ -38,7 +36,7 @@ public class HighwayNameChangeAction extends AbstractAction {
         ModifyWays modifyWays = listener.getModifyWays();
         modifyWays.setNameChangeInformation(selection, null, true);
         modifyWays.setDownloadTask(true);
-        MainApplication.worker.submit(modifyWays);
+        MainApplication.worker.execute(modifyWays);
     }
 
 }
