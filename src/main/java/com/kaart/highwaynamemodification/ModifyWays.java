@@ -49,7 +49,7 @@ public class ModifyWays implements Runnable {
         return InstanceHolder.INSTANCE;
     }
 
-    public void setDownloadTask(boolean b) {
+    public synchronized void setDownloadTask(boolean b) {
         this.downloadTask = b;
     }
 
@@ -71,16 +71,16 @@ public class ModifyWays implements Runnable {
      * @param ignoreNameChange If true, don't stop if the new name is the same as
      *                         the old name
      */
-    public void setNameChangeInformation(Collection<? extends OsmPrimitive> osmCollection, String originalName,
-            boolean ignoreNameChange) {
+    public synchronized void setNameChangeInformation(Collection<? extends OsmPrimitive> osmCollection,
+            String originalName, boolean ignoreNameChange) {
         wayChangingName = osmCollection;
         this.originalName = originalName;
         ignoreNewName = ignoreNameChange;
     }
 
     private static class DownloadAdditionalAsk implements Runnable {
-        private boolean done = false;
-        private boolean download = false;
+        private boolean done;
+        private boolean download;
 
         @Override
         public void run() {

@@ -33,7 +33,7 @@ import org.openstreetmap.josm.tools.Logging;
  * @author Taylor Smock
  *
  */
-public class DownloadAdditionalWays {
+public final class DownloadAdditionalWays {
 
     static HashMap<OsmDataLayer, HashMap<String, HashSet<OsmPrimitive>>> downloadedLayerWays = new HashMap<>();
 
@@ -77,19 +77,15 @@ public class DownloadAdditionalWays {
         HashSet<String> otherNames = new HashSet<>();
         HashMap<String, HashSet<OsmPrimitive>> tDownloadedWays = new HashMap<>();
         OsmDataLayer layer = MainApplication.getLayerManager().getActiveDataLayer();
-        if (downloadedLayerWays.containsKey(layer))
-            downloadedLayerWays.get(layer);
-        HashMap<String, HashSet<OsmPrimitive>> downloadedWays = downloadedLayerWays.containsKey(layer)
-                ? downloadedLayerWays.get(layer)
-                : new HashMap<>();
+        HashMap<String, HashSet<OsmPrimitive>> downloadedWays = downloadedLayerWays.getOrDefault(layer,
+                new HashMap<>());
         for (T highway : highways) {
             boolean alreadyDownloaded = false;
             for (String key : highway.keySet()) {
                 if (key.contains("name") && !key.contains("tiger") && !key.contains("type") && !key.contains("base")) {
                     String tName = highway.get(key);
-                    HashSet<OsmPrimitive> tDownloadedHighways = downloadedWays.containsKey(key.concat(tName))
-                            ? downloadedWays.get(key.concat(tName))
-                            : new HashSet<>();
+                    HashSet<OsmPrimitive> tDownloadedHighways = downloadedWays.getOrDefault(key.concat(tName),
+                            new HashSet<>());
                     otherNames.add(tName);
                     if (tDownloadedHighways.contains(highway))
                         alreadyDownloaded = true;
@@ -119,7 +115,7 @@ public class DownloadAdditionalWays {
                     return null;
             }
         }
-        final StringBuilder overpassQuery = new StringBuilder();
+        final StringBuilder overpassQuery = new StringBuilder(118);
         overpassQuery.append("[out:xml][timeout:15][bbox:{{bbox}}];(");
 
         otherNames.addAll(Arrays.asList(oldNames));
@@ -147,8 +143,8 @@ public class DownloadAdditionalWays {
         Future<?> future = download.download(overpass, params, bound, NullProgressMonitor.INSTANCE);
 
         RunnableFuture<Collection<OsmPrimitive>> mergeData = new RunnableFuture<Collection<OsmPrimitive>>() {
-            private boolean canceled = false;
-            private boolean done = false;
+            private boolean canceled;
+            private boolean done;
             private Collection<OsmPrimitive> primitives;
 
             @Override
