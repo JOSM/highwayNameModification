@@ -24,26 +24,27 @@ import org.openstreetmap.josm.tools.Destroyable;
  * @author Taylor Smock
  *
  */
-public class HighwayNameModification extends Plugin implements Destroyable{
-	public static final String NAME = "Highway Name Modification";
-	public static final String PLUGIN_IMAGE = "deltasignmod";
-	private HighwayNameListener listener;
-	private AbstractAction highwayNameModificationAction;
+public class HighwayNameModification extends Plugin implements Destroyable {
+    public static final String NAME = "Highway Name Modification";
+    public static final String PLUGIN_IMAGE = "deltasignmod";
+    private HighwayNameListener listener;
+    private AbstractAction highwayNameModificationAction;
 
-	public HighwayNameModification(PluginInformation info) {
-		super(info);
-		listener = new HighwayNameListener();
-		
-		DatasetEventManager.getInstance().addDatasetListener(listener, FireMode.IMMEDIATELY);
-		highwayNameModificationAction = new HighwayNameChangeAction(NAME,
-				ImageProvider.get(PLUGIN_IMAGE, ImageProvider.ImageSizes.MENU), listener);
-		MainApplication.getMenu().dataMenu.add(highwayNameModificationAction);
-	}
-	@Override
-	public void destroy() {
-		final JMenu dataMenu = MainApplication.getMenu().dataMenu;
-		DatasetEventManager.getInstance().removeDatasetListener(listener);
-		final Map<Action, Component> actions = Arrays.asList(dataMenu.getMenuComponents()).stream()
+    public HighwayNameModification(PluginInformation info) {
+        super(info);
+        listener = new HighwayNameListener();
+
+        DatasetEventManager.getInstance().addDatasetListener(listener, FireMode.IMMEDIATELY);
+        highwayNameModificationAction = new HighwayNameChangeAction(NAME,
+                ImageProvider.get(PLUGIN_IMAGE, ImageProvider.ImageSizes.MENU), listener);
+        MainApplication.getMenu().dataMenu.add(highwayNameModificationAction);
+    }
+
+    @Override
+    public void destroy() {
+        final JMenu dataMenu = MainApplication.getMenu().dataMenu;
+        DatasetEventManager.getInstance().removeDatasetListener(listener);
+        final Map<Action, Component> actions = Arrays.asList(dataMenu.getMenuComponents()).stream()
                 .filter(JMenuItem.class::isInstance).map(JMenuItem.class::cast)
                 .collect(Collectors.toMap(JMenuItem::getAction, component -> component));
 
@@ -52,5 +53,5 @@ public class HighwayNameModification extends Plugin implements Destroyable{
                 dataMenu.remove(action.getValue());
             }
         }
-	}
+    }
 }

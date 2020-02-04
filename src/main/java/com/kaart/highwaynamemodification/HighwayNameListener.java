@@ -22,65 +22,67 @@ import org.openstreetmap.josm.gui.MainApplication;
  *
  */
 public class HighwayNameListener implements DataSetListener {
-	private ModifyWays modifyWays = ModifyWays.getInstance();
+    private ModifyWays modifyWays = ModifyWays.getInstance();
 
-	@Override
-	public void primitivesAdded(PrimitivesAddedEvent event) {
-		// Don't care
-	}
+    @Override
+    public void primitivesAdded(PrimitivesAddedEvent event) {
+        // Don't care
+    }
 
-	@Override
-	public void primitivesRemoved(PrimitivesRemovedEvent event) {
-		// Don't care
-	}
+    @Override
+    public void primitivesRemoved(PrimitivesRemovedEvent event) {
+        // Don't care
+    }
 
-	@Override
-	public void tagsChanged(TagsChangedEvent event) {
-		final OsmPrimitive osm = event.getPrimitive();
-		final Map<String, String> originalKeys = event.getOriginalKeys();
-		if (osm.hasKey("highway") && originalKeys.containsKey("name") && osm.hasKey("name")) {
-			String newName = osm.get("name");
-			String oldName = originalKeys.get("name");
-			if (newName.equals(oldName)) return;
-			modifyWays.setNameChangeInformation(event.getPrimitives(), oldName);
-			modifyWays.setDownloadTask(true);
-			MainApplication.worker.submit(modifyWays);
-		}
-	}
+    @Override
+    public void tagsChanged(TagsChangedEvent event) {
+        final OsmPrimitive osm = event.getPrimitive();
+        final Map<String, String> originalKeys = event.getOriginalKeys();
+        if (osm.hasKey("highway") && originalKeys.containsKey("name") && osm.hasKey("name")) {
+            String newName = osm.get("name");
+            String oldName = originalKeys.get("name");
+            if (newName.equals(oldName))
+                return;
+            modifyWays.setNameChangeInformation(event.getPrimitives(), oldName);
+            modifyWays.setDownloadTask(true);
+            MainApplication.worker.submit(modifyWays);
+        }
+    }
 
-	public ModifyWays getModifyWays() {
-		return modifyWays;
-	}
+    public ModifyWays getModifyWays() {
+        return modifyWays;
+    }
 
-	@Override
-	public void nodeMoved(NodeMovedEvent event) {
-		// Don't care
-	}
+    @Override
+    public void nodeMoved(NodeMovedEvent event) {
+        // Don't care
+    }
 
-	@Override
-	public void wayNodesChanged(WayNodesChangedEvent event) {
-		// Don't care
-	}
+    @Override
+    public void wayNodesChanged(WayNodesChangedEvent event) {
+        // Don't care
+    }
 
-	@Override
-	public void relationMembersChanged(RelationMembersChangedEvent event) {
-		// Don't care
-	}
+    @Override
+    public void relationMembersChanged(RelationMembersChangedEvent event) {
+        // Don't care
+    }
 
-	@Override
-	public void otherDatasetChange(AbstractDatasetChangedEvent event) {
-		// Don't care
-	}
+    @Override
+    public void otherDatasetChange(AbstractDatasetChangedEvent event) {
+        // Don't care
+    }
 
-	@Override
-	public void dataChanged(DataChangedEvent event) {
-		// Validation fixes don't call tagsChanged, so we call it for them.
-		if (event == null || event.getEvents() == null) return;
-		for (AbstractDatasetChangedEvent tEvent : event.getEvents()) {
-			if (DatasetEventType.TAGS_CHANGED.equals(tEvent.getType())) {
-				tagsChanged((TagsChangedEvent) tEvent);
-			}
-		}
-	}
+    @Override
+    public void dataChanged(DataChangedEvent event) {
+        // Validation fixes don't call tagsChanged, so we call it for them.
+        if (event == null || event.getEvents() == null)
+            return;
+        for (AbstractDatasetChangedEvent tEvent : event.getEvents()) {
+            if (DatasetEventType.TAGS_CHANGED.equals(tEvent.getType())) {
+                tagsChanged((TagsChangedEvent) tEvent);
+            }
+        }
+    }
 
 }
