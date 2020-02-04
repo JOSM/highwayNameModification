@@ -3,7 +3,7 @@ package com.kaart.highwaynamemodification;
 import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.options;
 import static org.junit.Assert.*;
 
-import java.awt.event.ActionEvent;
+
 
 import javax.swing.JOptionPane;
 
@@ -23,14 +23,14 @@ import com.github.tomakehurst.wiremock.WireMockServer;
 
 public class HighwayNameChangeActionTest {
 	@Rule
-    public JOSMTestRules rule = new JOSMTestRules().projection();
+    public JOSMTestRules rule = new JOSMTestRules().projection().preferences();
     WireMockServer wireMock = new WireMockServer(options().usingFilesUnderDirectory("test/resources/wiremock"));
 
  @Before
  	public void setUp()    {
         wireMock.start();
         
-        Config.getPref().put("osm-server.url", wireMock.baseUrl()); // TODO do overpass, not OSM server...
+        Config.getPref().put("download.overpass.server", wireMock.baseUrl());
 		Config.getPref().putBoolean("message." + HighwayNameModification.NAME +".downloadAdditional", false);
 		Config.getPref().putInt("message." + HighwayNameModification.NAME + ".downloadAdditional" + ".value", JOptionPane.YES_OPTION);
 		
@@ -51,12 +51,14 @@ public class HighwayNameChangeActionTest {
 		prim.getNodes().forEach(newDataset::addPrimitive);
 		newDataset.addPrimitive(prim);
 		newDataset.addDataSetListener(tester);
-		wireMock.startRecording(Config.getUrls().getDefaultOsmApiUrl()); // TODO save mappings and remove
+		wireMock.startRecording(Config.getUrls().getDefaultOsmApiUrl());
+		wireMock.saveMappings();
 		prim.put("name", "Road 2");
 		wireMock.stopRecording();
 		wireMock.saveMappings();
 		assertTrue(newDataset.getWays().stream().filter(way -> way.hasTag("name")).allMatch(way -> "Road 2".equals(way.get("name"))));
-		wireMock.startRecording(Config.getUrls().getDefaultOsmApiUrl()); // TODO save mappings and remove
+		wireMock.startRecording(Config.getUrls().getDefaultOsmApiUrl());
+		wireMock.saveMappings();
 		prim.put("highway", "residential");
 		wireMock.stopRecording();
 		wireMock.saveMappings();

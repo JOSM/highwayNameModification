@@ -34,7 +34,7 @@ public class HighwayNameListenerTest {
 	 	public void setUp()    {
 	        wireMock.start();
 	        
-	        Config.getPref().put("osm-server.url", wireMock.baseUrl()); // TODO do overpass, not OSM server...
+	        Config.getPref().put("download.overpass.server", wireMock.baseUrl()); // TODO do overpass, not OSM server...
 			Config.getPref().putBoolean("message." + HighwayNameModification.NAME +".downloadAdditional", false);
 			Config.getPref().putInt("message." + HighwayNameModification.NAME + ".downloadAdditional" + ".value", JOptionPane.YES_OPTION);
 			
