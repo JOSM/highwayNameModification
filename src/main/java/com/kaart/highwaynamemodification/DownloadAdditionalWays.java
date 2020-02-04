@@ -13,6 +13,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.RunnableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+
 import org.openstreetmap.josm.actions.downloadtasks.DownloadOsmTask;
 import org.openstreetmap.josm.actions.downloadtasks.DownloadParams;
 import org.openstreetmap.josm.data.Bounds;
@@ -24,6 +25,7 @@ import org.openstreetmap.josm.data.osm.OsmPrimitive;
 import org.openstreetmap.josm.gui.MainApplication;
 import org.openstreetmap.josm.gui.layer.Layer;
 import org.openstreetmap.josm.gui.layer.OsmDataLayer;
+import org.openstreetmap.josm.gui.progress.NullProgressMonitor;
 import org.openstreetmap.josm.io.OverpassDownloadReader;
 import org.openstreetmap.josm.tools.Logging;
 
@@ -142,7 +144,7 @@ public class DownloadAdditionalWays {
         DownloadParams params = new DownloadParams();
         params.withNewLayer(true);
         params.withLayerName("haMoyQ4uVVcYTJR4");
-        Future<?> future = download.download(overpass, params, bound, null);
+        Future<?> future = download.download(overpass, params, bound, NullProgressMonitor.INSTANCE);
 
         RunnableFuture<Collection<OsmPrimitive>> mergeData = new RunnableFuture<Collection<OsmPrimitive>>() {
             private boolean canceled = false;
