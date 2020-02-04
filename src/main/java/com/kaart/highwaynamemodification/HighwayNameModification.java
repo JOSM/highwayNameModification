@@ -16,8 +16,8 @@ import org.openstreetmap.josm.data.osm.event.DatasetEventManager.FireMode;
 import org.openstreetmap.josm.gui.MainApplication;
 import org.openstreetmap.josm.plugins.Plugin;
 import org.openstreetmap.josm.plugins.PluginInformation;
-import org.openstreetmap.josm.tools.ImageProvider;
 import org.openstreetmap.josm.tools.Destroyable;
+import org.openstreetmap.josm.tools.ImageProvider;
 
 /**
  *
@@ -27,8 +27,8 @@ import org.openstreetmap.josm.tools.Destroyable;
 public class HighwayNameModification extends Plugin implements Destroyable {
     public static final String NAME = "Highway Name Modification";
     public static final String PLUGIN_IMAGE = "deltasignmod";
-    private HighwayNameListener listener;
-    private AbstractAction highwayNameModificationAction;
+    private final HighwayNameListener listener;
+    private final AbstractAction highwayNameModificationAction;
 
     public HighwayNameModification(PluginInformation info) {
         super(info);

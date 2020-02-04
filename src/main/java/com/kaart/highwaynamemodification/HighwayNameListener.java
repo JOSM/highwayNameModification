@@ -4,6 +4,7 @@
 package com.kaart.highwaynamemodification;
 
 import java.util.Map;
+
 import org.openstreetmap.josm.data.osm.OsmPrimitive;
 import org.openstreetmap.josm.data.osm.event.AbstractDatasetChangedEvent;
 import org.openstreetmap.josm.data.osm.event.AbstractDatasetChangedEvent.DatasetEventType;
@@ -22,7 +23,7 @@ import org.openstreetmap.josm.gui.MainApplication;
  *
  */
 public class HighwayNameListener implements DataSetListener {
-    private ModifyWays modifyWays = ModifyWays.getInstance();
+    private final ModifyWays modifyWays = ModifyWays.getInstance();
 
     @Override
     public void primitivesAdded(PrimitivesAddedEvent event) {

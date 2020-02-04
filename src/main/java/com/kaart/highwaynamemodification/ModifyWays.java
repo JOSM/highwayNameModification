@@ -8,6 +8,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+
 import javax.swing.JOptionPane;
 import javax.swing.SwingUtilities;
 
@@ -93,7 +94,7 @@ public class ModifyWays implements Runnable {
             case ConditionalOptionPaneUtil.DIALOG_DISABLED_OPTION:
             case JOptionPane.YES_OPTION:
                 download = true;
-                // Fall through
+                break;
             default:
             }
             done = true;
@@ -137,7 +138,7 @@ public class ModifyWays implements Runnable {
         }
     }
 
-    private void doRealRun(final OsmPrimitive osm, final String name) {
+    private static void doRealRun(final OsmPrimitive osm, final String name) {
         final String newName = osm.get("name");
         final Collection<OsmPrimitive> potentialAddrChange = osm.getDataSet()
                 .getPrimitives(t -> name.equals(t.get(ADDRSTREET)));
@@ -229,7 +230,7 @@ public class ModifyWays implements Runnable {
                     } else {
                         UndoRedoHandler.getInstance().add(new ChangePropertyCommand(osm, ADDRSTREET, newAddrStreet));
                     }
-                    // fall through
+                    break;
                 default:
                 }
                 ds.clearHighlightedWaySegments();
