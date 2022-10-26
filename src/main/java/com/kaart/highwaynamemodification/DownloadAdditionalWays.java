@@ -1,6 +1,4 @@
-/**
- *
- */
+// License: GPL. For details, see LICENSE file.
 package com.kaart.highwaynamemodification;
 
 import java.util.Arrays;
@@ -30,8 +28,8 @@ import org.openstreetmap.josm.io.OverpassDownloadReader;
 import org.openstreetmap.josm.tools.Logging;
 
 /**
+ * Download additional highways
  * @author Taylor Smock
- *
  */
 public final class DownloadAdditionalWays {
 
@@ -103,7 +101,7 @@ public final class DownloadAdditionalWays {
         final Bounds bound = new Bounds(initialWay.getBBox().getBottomRight());
         final DataSet ds1 = initialWay.getDataSet();
         for (T highway : notDownloaded) {
-            final BBox bbox = highway.getBBox();
+            final BBox bbox = new BBox(highway.getBBox());
             bbox.add(bbox.getTopLeftLon() - 0.01, bbox.getTopLeftLat() + 0.01);
             bbox.add(bbox.getTopLeftLon() + 0.01, bbox.getTopLeftLat() - 0.01);
             bbox.add(bbox.getBottomRightLon() + 0.01, bbox.getBottomRightLat() - 0.01);
@@ -125,7 +123,7 @@ public final class DownloadAdditionalWays {
             overpassQuery.append(
                     "node[~\"name\"~\"^NAME$\"];way[~\"name\"~\"^NAME$\"];".concat("relation[~\"name\"~\"^NAME$\"];")
                             .concat("node[\"addr:street\"=\"NAME\"];way[\"addr:street\"=\"NAME\"];")
-                            .concat("relation[\"addr:street\"=\"NAME\"];").replaceAll("NAME", tName));
+                            .concat("relation[\"addr:street\"=\"NAME\"];").replace("NAME", tName));
         }
 
         overpassQuery.append(");(._;<;);(._;>;);out meta;");
