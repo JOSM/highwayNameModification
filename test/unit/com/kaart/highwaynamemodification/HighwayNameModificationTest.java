@@ -1,6 +1,6 @@
 package com.kaart.highwaynamemodification;
 
-import static org.junit.Assert.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
@@ -9,44 +9,44 @@ import java.nio.charset.StandardCharsets;
 
 import javax.swing.JMenu;
 
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.RegisterExtension;
 import org.openstreetmap.josm.gui.MainApplication;
+import org.openstreetmap.josm.plugins.PluginException;
 import org.openstreetmap.josm.plugins.PluginInformation;
 import org.openstreetmap.josm.testutils.JOSMTestRules;
+import org.openstreetmap.josm.testutils.annotations.BasicPreferences;
 
-public class HighwayNameModificationTest {
-    @Rule
-    public JOSMTestRules test = new JOSMTestRules().preferences().main();
+@BasicPreferences
+class HighwayNameModificationTest {
+    @RegisterExtension
+    static JOSMTestRules test = new JOSMTestRules().main();
 
-    public PluginInformation info;
-    public HighwayNameModification plugin;
+    PluginInformation info;
+    HighwayNameModification plugin;
 
     private static final String VERSION = "no-such-version";
 
     /**
-     * @throws java.lang.Exception
+     * @throws PluginException if the plugin could not be loaded
      */
-    @Before
-    public void setUp() throws ExceptionInInitializerError, Exception {
-
+    @BeforeEach
+    void setUp() throws PluginException {
         final InputStream in = new ByteArrayInputStream("".getBytes(StandardCharsets.UTF_8));
         info = new PluginInformation(in, "HighwayNameModification", null);
         info.localversion = VERSION;
-
     }
 
     @Test
-    public final void testHighwayNameModification() throws NoSuchFieldException, SecurityException,
-            IllegalArgumentException, IllegalAccessException, ExceptionInInitializerError {
+    final void testHighwayNameModification() throws SecurityException,
+            IllegalArgumentException, ExceptionInInitializerError {
         final JMenu dataMenu = MainApplication.getMenu().dataMenu;
         final int dataMenuSize = dataMenu.getMenuComponentCount();
         plugin = new HighwayNameModification(info);
         assertEquals(dataMenuSize + 1, dataMenu.getMenuComponentCount());
         plugin.destroy();
         assertEquals(dataMenuSize, dataMenu.getMenuComponentCount());
-
     }
 
 }

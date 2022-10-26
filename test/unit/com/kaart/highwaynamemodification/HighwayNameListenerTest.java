@@ -1,35 +1,42 @@
 package com.kaart.highwaynamemodification;
 
 import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.options;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 import javax.swing.JOptionPane;
 
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.RegisterExtension;
 import org.openstreetmap.josm.TestUtils;
 import org.openstreetmap.josm.data.coor.LatLon;
 import org.openstreetmap.josm.data.osm.DataSet;
 import org.openstreetmap.josm.data.osm.Node;
 import org.openstreetmap.josm.data.osm.Way;
+import org.openstreetmap.josm.gui.MainApplication;
 import org.openstreetmap.josm.spi.preferences.Config;
 import org.openstreetmap.josm.testutils.JOSMTestRules;
 
 import com.github.tomakehurst.wiremock.WireMockServer;
+import org.openstreetmap.josm.testutils.annotations.BasicPreferences;
 
 /**
  * @author Ryan Fleming
  *
  */
-public class HighwayNameListenerTest {
-    @Rule
-    public JOSMTestRules rule = new JOSMTestRules().projection().preferences().fakeAPI();
+@BasicPreferences
+class HighwayNameListenerTest {
+    @RegisterExtension
+    static JOSMTestRules rule = new JOSMTestRules().projection().fakeAPI();
     WireMockServer wireMock = new WireMockServer(options().usingFilesUnderDirectory("test/resources/wiremock"));
 
-    @Before
-    public void setUp() {
+    @BeforeEach
+    void setUp() {
         wireMock.start();
 
         Config.getPref().put("download.overpass.server", wireMock.baseUrl());
@@ -39,16 +46,19 @@ public class HighwayNameListenerTest {
 
     }
 
-    @After
-    public void tearDown() {
-        wireMock.stop();
-        Config.getPref().put("osm-server.url", Config.getUrls().getDefaultOsmApiUrl());
-        Config.getPref().put("download.overpass.server", "https://overpass-api.de/api/");
-
+    @AfterEach
+    void tearDown() throws ExecutionException, InterruptedException, TimeoutException {
+        try {
+            MainApplication.worker.submit(() -> {/* Sync thread */}).get(1, TimeUnit.MINUTES);
+        } finally {
+            wireMock.stop();
+            Config.getPref().put("osm-server.url", Config.getUrls().getDefaultOsmApiUrl());
+            Config.getPref().put("download.overpass.server", "https://overpass-api.de/api/");
+        }
     }
 
     @Test
-    public final void testTagsChanged() {
+    final void testTagsChanged() {
         HighwayNameListener tester = new HighwayNameListener();
         Way prim = TestUtils.newWay("highway=residential name=\"North 8th Street\"",
                 new Node(new LatLon(39.084616, -108.559293)), new Node(new LatLon(39.0854611, -108.5592888)));
@@ -63,7 +73,7 @@ public class HighwayNameListenerTest {
     }
 
     @Test
-    public final void testDataChanged() {
+    final void testDataChanged() {
         HighwayNameListener tester = new HighwayNameListener();
         Way prim = TestUtils.newWay("highway=residential name=\"North 8th Street\"",
                 new Node(new LatLon(39.084616, -108.559293)), new Node(new LatLon(39.0854611, -108.5592888)));
@@ -73,8 +83,8 @@ public class HighwayNameListenerTest {
         newDataset.addDataSetListener(tester);
         for (int i = 0; i < 31; i++) { // 30 is minimum single stack events to trigger a DataChangedEvent
             Way newprim = TestUtils.newWay("highway=residential name=\"North 8th Street\"",
-                    new Node(new LatLon(39.084616, -108.559293 + (i / 100))),
-                    new Node(new LatLon(39.0854611, -108.5592888 + (i / 100))));
+                    new Node(new LatLon(39.084616, -108.559293 + (i / 100d))),
+                    new Node(new LatLon(39.0854611, -108.5592888 + (i / 100d))));
             newprim.getNodes().forEach(newDataset::addPrimitive);
             newDataset.addPrimitive(newprim);
             newprim.put("name", "Road " + i);

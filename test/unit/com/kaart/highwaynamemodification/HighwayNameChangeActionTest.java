@@ -1,31 +1,38 @@
 package com.kaart.highwaynamemodification;
 
 import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.options;
-import static org.junit.Assert.*;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 import javax.swing.JOptionPane;
 
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.RegisterExtension;
 import org.openstreetmap.josm.TestUtils;
 import org.openstreetmap.josm.data.coor.LatLon;
 import org.openstreetmap.josm.data.osm.DataSet;
 import org.openstreetmap.josm.data.osm.Node;
 import org.openstreetmap.josm.data.osm.Way;
+import org.openstreetmap.josm.gui.MainApplication;
 import org.openstreetmap.josm.spi.preferences.Config;
 import org.openstreetmap.josm.testutils.JOSMTestRules;
 
 import com.github.tomakehurst.wiremock.WireMockServer;
+import org.openstreetmap.josm.testutils.annotations.BasicPreferences;
 
-public class HighwayNameChangeActionTest {
-    @Rule
-    public JOSMTestRules rule = new JOSMTestRules().projection().preferences();
+@BasicPreferences
+class HighwayNameChangeActionTest {
+    @RegisterExtension
+    static JOSMTestRules rule = new JOSMTestRules().projection();
     WireMockServer wireMock = new WireMockServer(options().usingFilesUnderDirectory("test/resources/wiremock"));
 
-    @Before
-    public void setUp() {
+    @BeforeEach
+    void setUp() {
         wireMock.start();
 
         Config.getPref().put("download.overpass.server", wireMock.baseUrl());
@@ -35,15 +42,18 @@ public class HighwayNameChangeActionTest {
 
     }
 
-    @After
-    public void tearDown() {
-        wireMock.stop();
-        Config.getPref().put("osm-server.url", Config.getUrls().getDefaultOsmApiUrl());
-
+    @AfterEach
+    void tearDown() throws ExecutionException, InterruptedException, TimeoutException {
+        try {
+            MainApplication.worker.submit(() -> {/* Sync */}).get(10, TimeUnit.SECONDS);
+        } finally {
+            wireMock.stop();
+            Config.getPref().put("osm-server.url", Config.getUrls().getDefaultOsmApiUrl());
+        }
     }
 
     @Test
-    public final void testActionPerformed() {
+    final void testActionPerformed() {
         HighwayNameListener tester = new HighwayNameListener();
         Way prim = TestUtils.newWay("highway=residential name=\"North 8th Street\"",
                 new Node(new LatLon(39.084616, -108.559293)), new Node(new LatLon(39.0854611, -108.5592888)));
