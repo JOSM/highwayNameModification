@@ -1,5 +1,5 @@
 // License: GPL. For details, see LICENSE file.
-package com.kaart.highwaynamemodification;
+package org.openstreetmap.josm.plugins.highwaynamemodification;
 
 import java.util.Arrays;
 import java.util.Collection;

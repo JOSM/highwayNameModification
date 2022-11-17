@@ -1,5 +1,5 @@
 // License: GPL. For details, see LICENSE file.
-package com.kaart.highwaynamemodification;
+package org.openstreetmap.josm.plugins.highwaynamemodification;
 
 import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.options;
 import static org.junit.jupiter.api.Assertions.assertTrue;
