@@ -1,13 +1,14 @@
+// License: GPL. For details, see LICENSE file.
 package com.kaart.highwaynamemodification;
 
 import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.options;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import javax.swing.JOptionPane;
+
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-
-import javax.swing.JOptionPane;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -21,9 +22,9 @@ import org.openstreetmap.josm.data.osm.Way;
 import org.openstreetmap.josm.gui.MainApplication;
 import org.openstreetmap.josm.spi.preferences.Config;
 import org.openstreetmap.josm.testutils.JOSMTestRules;
+import org.openstreetmap.josm.testutils.annotations.BasicPreferences;
 
 import com.github.tomakehurst.wiremock.WireMockServer;
-import org.openstreetmap.josm.testutils.annotations.BasicPreferences;
 
 /**
  * @author Ryan Fleming
@@ -49,7 +50,8 @@ class HighwayNameListenerTest {
     @AfterEach
     void tearDown() throws ExecutionException, InterruptedException, TimeoutException {
         try {
-            MainApplication.worker.submit(() -> {/* Sync thread */}).get(1, TimeUnit.MINUTES);
+            MainApplication.worker.submit(() -> {
+                /* Sync thread */}).get(1, TimeUnit.MINUTES);
         } finally {
             wireMock.stop();
             Config.getPref().put("osm-server.url", Config.getUrls().getDefaultOsmApiUrl());

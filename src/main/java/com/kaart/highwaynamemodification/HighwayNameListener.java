@@ -1,6 +1,4 @@
-/**
- *
- */
+// License: GPL. For details, see LICENSE file.
 package com.kaart.highwaynamemodification;
 
 import java.util.Map;
@@ -19,8 +17,9 @@ import org.openstreetmap.josm.data.osm.event.WayNodesChangedEvent;
 import org.openstreetmap.josm.gui.MainApplication;
 
 /**
- * @author Taylor Smock
+ * The listener for name changes
  *
+ * @author Taylor Smock
  */
 public class HighwayNameListener implements DataSetListener {
     private final ModifyWays modifyWays = ModifyWays.getInstance();
@@ -80,7 +79,7 @@ public class HighwayNameListener implements DataSetListener {
         if (event == null || event.getEvents() == null)
             return;
         for (AbstractDatasetChangedEvent tEvent : event.getEvents()) {
-            if (DatasetEventType.TAGS_CHANGED.equals(tEvent.getType())) {
+            if (DatasetEventType.TAGS_CHANGED == tEvent.getType()) {
                 tagsChanged((TagsChangedEvent) tEvent);
             }
         }

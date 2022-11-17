@@ -1,13 +1,13 @@
+// License: GPL. For details, see LICENSE file.
 package com.kaart.highwaynamemodification;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+import javax.swing.JMenu;
+
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
-
 import java.nio.charset.StandardCharsets;
-
-import javax.swing.JMenu;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -39,8 +39,8 @@ class HighwayNameModificationTest {
     }
 
     @Test
-    final void testHighwayNameModification() throws SecurityException,
-            IllegalArgumentException, ExceptionInInitializerError {
+    final void testHighwayNameModification()
+            throws SecurityException, IllegalArgumentException, ExceptionInInitializerError {
         final JMenu dataMenu = MainApplication.getMenu().dataMenu;
         final int dataMenuSize = dataMenu.getMenuComponentCount();
         plugin = new HighwayNameModification(info);

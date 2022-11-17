@@ -1,16 +1,16 @@
+// License: GPL. For details, see LICENSE file.
 package com.kaart.highwaynamemodification;
 
 import static org.openstreetmap.josm.tools.I18n.tr;
 
+import javax.swing.JOptionPane;
+import javax.swing.SwingUtilities;
+
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashMap;
-import java.util.HashSet;
+import java.util.Collections;
 import java.util.List;
-
-import javax.swing.JOptionPane;
-import javax.swing.SwingUtilities;
 
 import org.openstreetmap.josm.actions.AutoScaleAction;
 import org.openstreetmap.josm.command.ChangePropertyCommand;
@@ -22,14 +22,19 @@ import org.openstreetmap.josm.data.osm.Way;
 import org.openstreetmap.josm.data.osm.WaySegment;
 import org.openstreetmap.josm.gui.ConditionalOptionPaneUtil;
 import org.openstreetmap.josm.gui.MainApplication;
+import org.openstreetmap.josm.gui.util.GuiHelper;
 import org.openstreetmap.josm.tools.Geometry;
 import org.openstreetmap.josm.tools.Logging;
 
-public class ModifyWays implements Runnable {
+/**
+ * The actual class for modifying ways
+ *
+ * @author Taylor Smock
+ */
+final class ModifyWays implements Runnable {
 
-    HashMap<String, HashSet<OsmPrimitive>> downloadedWays = new HashMap<>();
-
-    static final String ADDRSTREET = "addr:street";
+    /** The addr:street tag */
+    static final String ADDR_STREET = "addr:street";
 
     boolean downloadTask;
 
@@ -53,12 +58,12 @@ public class ModifyWays implements Runnable {
         this.downloadTask = b;
     }
 
-    public void setNameChangeInformation(OsmPrimitive osm, String originalName) {
-        Collection<OsmPrimitive> tCollection = new HashSet<>();
-        tCollection.add(osm);
-        setNameChangeInformation(tCollection, originalName);
-    }
-
+    /**
+     * Set the name change information
+     *
+     * @param osmCollection The objects to change names for
+     * @param originalName  The original name
+     */
     public void setNameChangeInformation(Collection<? extends OsmPrimitive> osmCollection, String originalName) {
         setNameChangeInformation(osmCollection, originalName, false);
     }
@@ -100,9 +105,17 @@ public class ModifyWays implements Runnable {
             done = true;
         }
 
+        /**
+         * Wait for the runnable to finish
+         *
+         * @return {@code true} if the download finished
+         * @throws InterruptedException If this thread was interrupted
+         */
         public boolean get() throws InterruptedException {
             while (!done) {
-                Thread.sleep(100);
+                synchronized (this) {
+                    this.wait(100);
+                }
             }
             return download;
         }
@@ -112,12 +125,12 @@ public class ModifyWays implements Runnable {
     public void run() {
         try {
             synchronized (this) {
-                if (downloadTask && !DownloadAdditionalWays.checkIfDownloaded(wayChangingName)) {
+                if (originalName != null && downloadTask
+                        && !DownloadAdditionalWays.checkIfDownloaded(wayChangingName)) {
                     DownloadAdditionalAsk ask = new DownloadAdditionalAsk();
-                    SwingUtilities.invokeAndWait(ask);
+                    GuiHelper.runInEDTAndWait(ask);
                     if (ask.get()) {
-                        String[] oldNames = originalName != null ? new String[] { originalName } : null;
-                        DownloadAdditionalWays.getAdditionalWays(wayChangingName, oldNames);
+                        DownloadAdditionalWays.getAdditionalWays(wayChangingName, originalName);
                     }
                 }
                 for (OsmPrimitive osm : wayChangingName) {
@@ -125,14 +138,14 @@ public class ModifyWays implements Runnable {
                         doRealRun(osm, originalName);
                     } else {
                         for (String key : osm.keySet()) {
-                            if (key.contains("name") && !key.equals("name")) {
+                            if (key.contains("name") && !"name".equals(key)) {
                                 doRealRun(osm, osm.get(key));
                             }
                         }
                     }
                 }
             }
-        } catch (InterruptedException | InvocationTargetException e) {
+        } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             Logging.error(e);
         }
@@ -141,7 +154,7 @@ public class ModifyWays implements Runnable {
     private static void doRealRun(final OsmPrimitive osm, final String name) {
         final String newName = osm.get("name");
         final Collection<OsmPrimitive> potentialAddrChange = osm.getDataSet()
-                .getPrimitives(t -> name.equals(t.get(ADDRSTREET)));
+                .getPrimitives(t -> name.equals(t.get(ADDR_STREET)));
         final Collection<OsmPrimitive> roads = osm.getDataSet().getPrimitives(
                 t -> (t.hasKey("highway") && (name.equals(t.get("name")) || newName.equals(t.get("name")))));
         changeAddrTags(osm, name, potentialAddrChange, roads);
@@ -160,7 +173,7 @@ public class ModifyWays implements Runnable {
             Collection<OsmPrimitive> roads) {
         if (primitives == null || primitives.isEmpty()) {
             primitives = highway.getDataSet()
-                    .getPrimitives(t -> t.hasKey(ADDRSTREET) && oldAddrStreet.equals(t.get(ADDRSTREET)));
+                    .getPrimitives(t -> t.hasKey(ADDR_STREET) && oldAddrStreet.equals(t.get(ADDR_STREET)));
         }
         if (roads == null || roads.isEmpty()) {
             roads = highway.getDataSet()
@@ -198,7 +211,8 @@ public class ModifyWays implements Runnable {
             final Collection<OsmPrimitive> initialSelection = ds.getSelected();
             for (final OsmPrimitive osm : primitives) {
                 final OsmPrimitive closest = Geometry.getClosestPrimitive(osm, roads);
-                if (!osm.hasKey(ADDRSTREET) || !highway.equals(closest) || osm.get(ADDRSTREET).equals(newAddrStreet)) {
+                if (!osm.hasKey(ADDR_STREET) || !highway.equals(closest)
+                        || osm.get(ADDR_STREET).equals(newAddrStreet)) {
                     continue; // TODO throw something
                 }
                 ds.setSelected(osm);
@@ -206,9 +220,7 @@ public class ModifyWays implements Runnable {
                 final List<IPrimitive> zoomPrimitives = new ArrayList<>();
                 if (closest instanceof Way) {
                     final WaySegment tWay = Geometry.getClosestWaySegment((Way) closest, osm);
-                    final List<WaySegment> segments = new ArrayList<>();
-                    segments.add(tWay);
-                    ds.setHighlightedWaySegments(segments);
+                    ds.setHighlightedWaySegments(Collections.singleton(tWay));
                     zoomPrimitives.add(tWay.getFirstNode());
                     zoomPrimitives.add(tWay.getSecondNode());
                 }
@@ -216,7 +228,7 @@ public class ModifyWays implements Runnable {
                 if (continueZooming)
                     AutoScaleAction.zoomTo(zoomPrimitives);
                 final int answer = ConditionalOptionPaneUtil.showOptionDialog(key, MainApplication.getMainFrame(),
-                        tr("{0}Should {1} be changed to {2}{3}", "<html><h3>", osm.get(ADDRSTREET), newAddrStreet,
+                        tr("{0}Should {1} be changed to {2}{3}", "<html><h3>", osm.get(ADDR_STREET), newAddrStreet,
                                 "</h3></html>"),
                         tr("Highway name changed"), JOptionPane.YES_NO_CANCEL_OPTION, JOptionPane.QUESTION_MESSAGE,
                         null, null);
@@ -228,7 +240,7 @@ public class ModifyWays implements Runnable {
                         toChange.add(osm);
                         continueZooming = false;
                     } else {
-                        UndoRedoHandler.getInstance().add(new ChangePropertyCommand(osm, ADDRSTREET, newAddrStreet));
+                        UndoRedoHandler.getInstance().add(new ChangePropertyCommand(osm, ADDR_STREET, newAddrStreet));
                     }
                     break;
                 default:
@@ -241,7 +253,7 @@ public class ModifyWays implements Runnable {
                 return;
             AutoScaleAction.zoomTo(toChange);
 
-            UndoRedoHandler.getInstance().add(new ChangePropertyCommand(toChange, ADDRSTREET, newAddrStreet));
+            UndoRedoHandler.getInstance().add(new ChangePropertyCommand(toChange, ADDR_STREET, newAddrStreet));
         }
     }
 }
