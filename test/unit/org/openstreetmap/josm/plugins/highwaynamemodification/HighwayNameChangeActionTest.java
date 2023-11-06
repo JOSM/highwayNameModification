@@ -1,11 +1,9 @@
 // License: GPL. For details, see LICENSE file.
 package org.openstreetmap.josm.plugins.highwaynamemodification;
 
-import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.options;
+import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMockConfig;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-
-import javax.swing.JOptionPane;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -14,6 +12,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.logging.Handler;
 import java.util.logging.LogRecord;
+
+import javax.swing.JOptionPane;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -27,38 +27,34 @@ import org.openstreetmap.josm.data.osm.Way;
 import org.openstreetmap.josm.gui.MainApplication;
 import org.openstreetmap.josm.gui.layer.OsmDataLayer;
 import org.openstreetmap.josm.spi.preferences.Config;
-import org.openstreetmap.josm.testutils.JOSMTestRules;
 import org.openstreetmap.josm.testutils.annotations.BasicPreferences;
+import org.openstreetmap.josm.testutils.annotations.Projection;
+import org.openstreetmap.josm.testutils.annotations.ThreadSync;
 import org.openstreetmap.josm.tools.Logging;
 
-import com.github.tomakehurst.wiremock.WireMockServer;
+import com.github.tomakehurst.wiremock.junit5.WireMockExtension;
 
 @BasicPreferences
+@Projection
+@ThreadSync
 class HighwayNameChangeActionTest {
     @RegisterExtension
-    static JOSMTestRules rule = new JOSMTestRules().projection();
-    WireMockServer wireMock = new WireMockServer(options().usingFilesUnderDirectory("test/resources/wiremock"));
+    static WireMockExtension wireMock = WireMockExtension.newInstance()
+            .options(wireMockConfig().dynamicPort().dynamicHttpsPort().usingFilesUnderDirectory("test/resources/wiremock"))
+            .build();
+
 
     @BeforeEach
     void setUp() {
-        wireMock.start();
-
         Config.getPref().put("download.overpass.server", wireMock.baseUrl());
         Config.getPref().putBoolean("message." + HighwayNameModification.NAME + ".downloadAdditional", false);
         Config.getPref().putInt("message." + HighwayNameModification.NAME + ".downloadAdditional" + ".value",
                 JOptionPane.YES_OPTION);
-
     }
 
     @AfterEach
-    void tearDown() throws ExecutionException, InterruptedException, TimeoutException {
-        try {
-            MainApplication.worker.submit(() -> {
-                /* Sync */}).get(10, TimeUnit.SECONDS);
-        } finally {
-            wireMock.stop();
-            Config.getPref().put("osm-server.url", Config.getUrls().getDefaultOsmApiUrl());
-        }
+    void tearDown() {
+        Config.getPref().put("osm-server.url", Config.getUrls().getDefaultOsmApiUrl());
     }
 
     @Test

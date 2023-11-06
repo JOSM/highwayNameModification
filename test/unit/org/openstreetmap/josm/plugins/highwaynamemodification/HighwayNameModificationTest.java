@@ -3,26 +3,23 @@ package org.openstreetmap.josm.plugins.highwaynamemodification;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-import javax.swing.JMenu;
-
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 
+import javax.swing.JMenu;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.RegisterExtension;
 import org.openstreetmap.josm.gui.MainApplication;
 import org.openstreetmap.josm.plugins.PluginException;
 import org.openstreetmap.josm.plugins.PluginInformation;
-import org.openstreetmap.josm.testutils.JOSMTestRules;
 import org.openstreetmap.josm.testutils.annotations.BasicPreferences;
+import org.openstreetmap.josm.testutils.annotations.Main;
 
 @BasicPreferences
+@Main
 class HighwayNameModificationTest {
-    @RegisterExtension
-    static JOSMTestRules test = new JOSMTestRules().main();
-
     PluginInformation info;
     HighwayNameModification plugin;
 
