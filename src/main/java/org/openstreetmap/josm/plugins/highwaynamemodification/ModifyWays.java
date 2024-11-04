@@ -42,45 +42,32 @@ final class ModifyWays implements Runnable {
     String originalName;
     boolean ignoreNewName;
 
-    private static class InstanceHolder {
-        static final ModifyWays INSTANCE = new ModifyWays();
-    }
-
-    private ModifyWays() {
-        // Do nothing
-    }
-
-    public static ModifyWays getInstance() {
-        return InstanceHolder.INSTANCE;
-    }
-
-    public synchronized void setDownloadTask(boolean b) {
-        this.downloadTask = b;
-    }
-
     /**
-     * Set the name change information
+     * Create a new {@link ModifyWays} object
      *
      * @param osmCollection The objects to change names for
      * @param originalName  The original name
      */
-    public void setNameChangeInformation(Collection<? extends OsmPrimitive> osmCollection, String originalName) {
-        setNameChangeInformation(osmCollection, originalName, false);
+    ModifyWays(Collection<? extends OsmPrimitive> osmCollection, String originalName) {
+        this(osmCollection, originalName, false);
     }
-
     /**
-     * Initialize a new ModifyWays method
+     * Create a new {@link ModifyWays} object
      *
      * @param osmCollection    The collection of ways that are changing names
      * @param originalName     The old name of the ways
      * @param ignoreNameChange If true, don't stop if the new name is the same as
      *                         the old name
      */
-    public synchronized void setNameChangeInformation(Collection<? extends OsmPrimitive> osmCollection,
-            String originalName, boolean ignoreNameChange) {
-        wayChangingName = osmCollection;
+    ModifyWays(Collection<? extends OsmPrimitive> osmCollection,
+               String originalName, boolean ignoreNameChange) {
+        this.wayChangingName = osmCollection;
         this.originalName = originalName;
-        ignoreNewName = ignoreNameChange;
+        this.ignoreNewName = ignoreNameChange;
+    }
+
+    public void setDownloadTask(boolean b) {
+        this.downloadTask = b;
     }
 
     private static class DownloadAdditionalAsk implements Runnable {
@@ -124,23 +111,21 @@ final class ModifyWays implements Runnable {
     @Override
     public void run() {
         try {
-            synchronized (this) {
-                if (originalName != null && downloadTask
-                        && !DownloadAdditionalWays.checkIfDownloaded(wayChangingName)) {
-                    DownloadAdditionalAsk ask = new DownloadAdditionalAsk();
-                    GuiHelper.runInEDTAndWait(ask);
-                    if (ask.get()) {
-                        DownloadAdditionalWays.getAdditionalWays(wayChangingName, originalName);
-                    }
+            if (originalName != null && downloadTask
+                    && !DownloadAdditionalWays.checkIfDownloaded(wayChangingName)) {
+                DownloadAdditionalAsk ask = new DownloadAdditionalAsk();
+                GuiHelper.runInEDTAndWait(ask);
+                if (ask.get()) {
+                    DownloadAdditionalWays.getAdditionalWays(wayChangingName, originalName);
                 }
-                for (OsmPrimitive osm : wayChangingName) {
-                    if (originalName != null) {
-                        doRealRun(osm, originalName);
-                    } else {
-                        for (String key : osm.keySet()) {
-                            if (key.contains("name") && !"name".equals(key)) {
-                                doRealRun(osm, osm.get(key));
-                            }
+            }
+            for (OsmPrimitive osm : wayChangingName) {
+                if (originalName != null) {
+                    doRealRun(osm, originalName);
+                } else {
+                    for (String key : osm.keySet()) {
+                        if (key.contains("name") && !"name".equals(key)) {
+                            doRealRun(osm, osm.get(key));
                         }
                     }
                 }

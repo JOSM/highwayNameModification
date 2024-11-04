@@ -42,8 +42,7 @@ public class HighwayNameChangeAction extends JosmAction {
     public void actionPerformed(ActionEvent e) {
         DataSet ds = MainApplication.getLayerManager().getActiveDataSet();
         Collection<OsmPrimitive> selection = ds.getAllSelected();
-        ModifyWays modifyWays = listener.getModifyWays();
-        modifyWays.setNameChangeInformation(selection, null, true);
+        ModifyWays modifyWays = new ModifyWays(selection, null, true);
         modifyWays.setDownloadTask(true);
         MainApplication.worker.execute(modifyWays);
     }

@@ -1,6 +1,9 @@
 // License: GPL. For details, see LICENSE file.
 package org.openstreetmap.josm.plugins.highwaynamemodification;
 
+import static java.util.function.Predicate.not;
+
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
@@ -48,6 +51,8 @@ public final class DownloadAdditionalWays {
      */
     public static <T extends OsmPrimitive> boolean checkIfDownloaded(Collection<T> ways) {
         boolean rValue = false;
+        final Collection<Layer> layers = new ArrayList<>(MainApplication.getLayerManager().getLayers());
+        downloadedLayerWays.keySet().removeIf(not(layers::contains));
         for (HashMap<String, HashSet<OsmPrimitive>> map : downloadedLayerWays.values()) {
             for (HashSet<OsmPrimitive> set : map.values()) {
                 if (set.containsAll(ways)) {

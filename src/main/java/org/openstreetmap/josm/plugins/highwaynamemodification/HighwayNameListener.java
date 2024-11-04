@@ -1,7 +1,12 @@
 // License: GPL. For details, see LICENSE file.
 package org.openstreetmap.josm.plugins.highwaynamemodification;
 
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import org.openstreetmap.josm.data.osm.OsmPrimitive;
 import org.openstreetmap.josm.data.osm.event.AbstractDatasetChangedEvent;
@@ -22,7 +27,7 @@ import org.openstreetmap.josm.gui.MainApplication;
  * @author Taylor Smock
  */
 public class HighwayNameListener implements DataSetListener {
-    private final ModifyWays modifyWays = ModifyWays.getInstance();
+    private static final String[] EMPTY_STRING_ARRAY = new String[0];
 
     @Override
     public void primitivesAdded(PrimitivesAddedEvent event) {
@@ -36,21 +41,14 @@ public class HighwayNameListener implements DataSetListener {
 
     @Override
     public void tagsChanged(TagsChangedEvent event) {
-        final OsmPrimitive osm = event.getPrimitive();
-        final Map<String, String> originalKeys = event.getOriginalKeys();
-        if (osm.hasKey("highway") && originalKeys.containsKey("name") && osm.hasKey("name")) {
-            String newName = osm.get("name");
-            String oldName = originalKeys.get("name");
+        final String[] oldNew = getOldNewName(event);
+        if (oldNew.length == 2) {
+            String newName = oldNew[0];
+            String oldName = oldNew[1];
             if (newName.equals(oldName))
                 return;
-            modifyWays.setNameChangeInformation(event.getPrimitives(), oldName);
-            modifyWays.setDownloadTask(true);
-            MainApplication.worker.execute(modifyWays);
+            performTagChanges(oldName, Collections.singleton(event));
         }
-    }
-
-    public ModifyWays getModifyWays() {
-        return modifyWays;
     }
 
     @Override
@@ -78,11 +76,33 @@ public class HighwayNameListener implements DataSetListener {
         // Validation fixes don't call tagsChanged, so we call it for them.
         if (event == null || event.getEvents() == null)
             return;
-        for (AbstractDatasetChangedEvent tEvent : event.getEvents()) {
-            if (DatasetEventType.TAGS_CHANGED == tEvent.getType()) {
-                tagsChanged((TagsChangedEvent) tEvent);
-            }
+        final Map<String, List<TagsChangedEvent>> groupedEvents = event.getEvents().stream()
+                .filter(tEvent -> DatasetEventType.TAGS_CHANGED == tEvent.getType())
+                .map(TagsChangedEvent.class::cast)
+                .collect(Collectors.groupingBy(tEvent -> String.join("----xxxx----", getOldNewName(tEvent))));
+        for (List<TagsChangedEvent> events : groupedEvents.values()) {
+            String oldName = getOldNewName(events.get(0))[0];
+            performTagChanges(oldName, events);
         }
     }
 
+    private void performTagChanges(String oldName, Collection<TagsChangedEvent> events) {
+        final Collection<OsmPrimitive> objects = events.stream().flatMap(event -> event.getPrimitives().stream()).collect(Collectors.toList());
+        final ModifyWays modifyWays = new ModifyWays(objects, oldName);
+        modifyWays.setDownloadTask(true);
+        MainApplication.worker.execute(modifyWays);
+    }
+
+    private String[] getOldNewName(TagsChangedEvent event) {
+        final OsmPrimitive osm = event.getPrimitive();
+        final Map<String, String> originalKeys = event.getOriginalKeys();
+        if (osm.hasKey("highway") && originalKeys.containsKey("name") && osm.hasKey("name")) {
+            String newName = osm.get("name");
+            String oldName = originalKeys.get("name");
+            if (!newName.equals(oldName)) {
+                return new String[] {oldName, newName};
+            }
+        }
+        return EMPTY_STRING_ARRAY;
+    }
 }
