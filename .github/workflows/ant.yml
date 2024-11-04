@@ -20,5 +20,6 @@ jobs:
     uses: JOSM/JOSMPluginAction/.github/workflows/ant.yml@v3
     with:
       josm-revision: ${{ matrix.josm-revision }}
+      plugin-jar-name: 'highwaynamemodification'
       perform-revision-tagging: ${{ matrix.josm-revision == 'r19044' && github.repository == 'JOSM/highwayNameModification' && github.ref_type == 'branch' && github.ref_name == 'master' && github.event_name != 'schedule' && github.event_name != 'pull_request' }}
     secrets: inherit
