@@ -43,8 +43,8 @@ public class HighwayNameListener implements DataSetListener {
     public void tagsChanged(TagsChangedEvent event) {
         final String[] oldNew = getOldNewName(event);
         if (oldNew.length == 2) {
-            String newName = oldNew[0];
-            String oldName = oldNew[1];
+            String newName = oldNew[1];
+            String oldName = oldNew[0];
             if (newName.equals(oldName))
                 return;
             performTagChanges(oldName, Collections.singleton(event));
