@@ -1,0 +1,30 @@
+{
+  "id" : "518ac8f5-8279-49db-8d0e-ed3df43eb66c",
+  "name" : "api_capabilities",
+  "request" : {
+    "url" : "/api/capabilities",
+    "method" : "GET"
+  },
+  "response" : {
+    "status" : 301,
+    "body" : "<!DOCTYPE HTML PUBLIC \"-//IETF//DTD HTML 2.0//EN\">\n<html><head>\n<title>301 Moved Permanently</title>\n</head><body>\n<h1>Moved Permanently</h1>\n<p>The document has moved <a href=\"https://www.openstreetmap.org/api/capabilities\">here</a>.</p>\n<hr>\n<address>Apache/2.4.62 (Debian) Server at openstreetmap.org Port 443</address>\n</body></html>\n",
+    "headers" : {
+      "expires" : "Tue, 19 Jan 2038 03:14:07 GMT",
+      "CF-RAY" : "8dde39cb0ab0e775-DEN",
+      "Server" : "cloudflare",
+      "cf-cache-status" : "DYNAMIC",
+      "strict-transport-security" : "max-age=31536000; includeSubDomains; preload",
+      "Date" : "Tue, 05 Nov 2024 16:29:59 GMT",
+      "NEL" : "{\"success_fraction\":0,\"report_to\":\"cf-nel\",\"max_age\":604800}",
+      "Cache-Control" : "max-age=31536000",
+      "Report-To" : "{\"endpoints\":[{\"url\":\"https:\\/\\/a.nel.cloudflare.com\\/report\\/v4?s=YRb%2FJ78w%2Fm2wKxclRcvoL%2BMTnYbPjSMDT0zxGg2uFhYVk1ig0M22hoOp3oHo%2FnY2Q7WYNIKzyGGOwAT%2BfT8l0g%2BC2zhRZGbD%2BI0KVAuG6gcO0hv5wF0P7J3rGa7uK6%2FPTciPQw%3D%3D\"}],\"group\":\"cf-nel\",\"max_age\":604800}",
+      "location" : "https://www.openstreetmap.org/api/capabilities",
+      "server-timing" : "cfL4;desc=\"?proto=TCP&rtt=13933&sent=6&recv=8&lost=0&retrans=0&sent_bytes=3128&recv_bytes=779&delivery_rate=210924&cwnd=215&unsent_bytes=0&cid=ba806023c7f66657&ts=398&x=0\"",
+      "alt-svc" : "h3=\":443\"; ma=86400",
+      "Content-Type" : "text/html; charset=iso-8859-1"
+    }
+  },
+  "uuid" : "518ac8f5-8279-49db-8d0e-ed3df43eb66c",
+  "persistent" : true,
+  "insertionIndex" : 1
+}

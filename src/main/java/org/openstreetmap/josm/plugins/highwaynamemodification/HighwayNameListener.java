@@ -1,7 +1,6 @@
 // License: GPL. For details, see LICENSE file.
 package org.openstreetmap.josm.plugins.highwaynamemodification;
 
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
@@ -77,19 +76,21 @@ public class HighwayNameListener implements DataSetListener {
         if (event == null || event.getEvents() == null)
             return;
         final Map<String, List<TagsChangedEvent>> groupedEvents = event.getEvents().stream()
-                .filter(tEvent -> DatasetEventType.TAGS_CHANGED == tEvent.getType())
-                .map(TagsChangedEvent.class::cast)
+                .filter(tEvent -> DatasetEventType.TAGS_CHANGED == tEvent.getType()).map(TagsChangedEvent.class::cast)
                 .collect(Collectors.groupingBy(tEvent -> String.join("----xxxx----", getOldNewName(tEvent))));
         for (List<TagsChangedEvent> events : groupedEvents.values()) {
-            String oldName = getOldNewName(events.get(0))[0];
-            performTagChanges(oldName, events);
+            String[] newOldName = getOldNewName(events.get(0));
+            if (newOldName.length == 2) {
+                String oldName = newOldName[0];
+                performTagChanges(oldName, events);
+            }
         }
     }
 
     private void performTagChanges(String oldName, Collection<TagsChangedEvent> events) {
-        final Collection<OsmPrimitive> objects = events.stream().flatMap(event -> event.getPrimitives().stream()).collect(Collectors.toList());
-        final ModifyWays modifyWays = new ModifyWays(objects, oldName);
-        modifyWays.setDownloadTask(true);
+        final Collection<OsmPrimitive> objects = events.stream().flatMap(event -> event.getPrimitives().stream())
+                .collect(Collectors.toList());
+        final ModifyWays modifyWays = new ModifyWays(objects, oldName, false, true, null);
         MainApplication.worker.execute(modifyWays);
     }
 
@@ -100,7 +101,7 @@ public class HighwayNameListener implements DataSetListener {
             String newName = osm.get("name");
             String oldName = originalKeys.get("name");
             if (!newName.equals(oldName)) {
-                return new String[] {oldName, newName};
+                return new String[] { oldName, newName };
             }
         }
         return EMPTY_STRING_ARRAY;

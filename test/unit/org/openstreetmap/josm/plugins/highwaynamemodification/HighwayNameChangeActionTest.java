@@ -1,7 +1,6 @@
 // License: GPL. For details, see LICENSE file.
 package org.openstreetmap.josm.plugins.highwaynamemodification;
 
-import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMockConfig;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -13,12 +12,8 @@ import java.util.concurrent.TimeoutException;
 import java.util.logging.Handler;
 import java.util.logging.LogRecord;
 
-import javax.swing.JOptionPane;
-
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.RegisterExtension;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.openstreetmap.josm.TestUtils;
 import org.openstreetmap.josm.data.coor.LatLon;
 import org.openstreetmap.josm.data.osm.DataSet;
@@ -26,37 +21,22 @@ import org.openstreetmap.josm.data.osm.Node;
 import org.openstreetmap.josm.data.osm.Way;
 import org.openstreetmap.josm.gui.MainApplication;
 import org.openstreetmap.josm.gui.layer.OsmDataLayer;
-import org.openstreetmap.josm.spi.preferences.Config;
+import org.openstreetmap.josm.plugins.highwaynamemodification.testutils.GuiAnswers;
+import org.openstreetmap.josm.plugins.highwaynamemodification.testutils.Overpass;
 import org.openstreetmap.josm.testutils.annotations.BasicPreferences;
+import org.openstreetmap.josm.testutils.annotations.BasicWiremock;
 import org.openstreetmap.josm.testutils.annotations.Projection;
 import org.openstreetmap.josm.testutils.annotations.ThreadSync;
 import org.openstreetmap.josm.tools.Logging;
 
-import com.github.tomakehurst.wiremock.junit5.WireMockExtension;
-
 @BasicPreferences
+@BasicWiremock
+@ExtendWith(BasicWiremock.OsmApiExtension.class)
+@GuiAnswers
+@Overpass
 @Projection
 @ThreadSync
 class HighwayNameChangeActionTest {
-    @RegisterExtension
-    static WireMockExtension wireMock = WireMockExtension.newInstance()
-            .options(wireMockConfig().dynamicPort().dynamicHttpsPort().usingFilesUnderDirectory("test/resources/wiremock"))
-            .build();
-
-
-    @BeforeEach
-    void setUp() {
-        Config.getPref().put("download.overpass.server", wireMock.baseUrl());
-        Config.getPref().putBoolean("message." + HighwayNameModification.NAME + ".downloadAdditional", false);
-        Config.getPref().putInt("message." + HighwayNameModification.NAME + ".downloadAdditional" + ".value",
-                JOptionPane.YES_OPTION);
-    }
-
-    @AfterEach
-    void tearDown() {
-        Config.getPref().put("osm-server.url", Config.getUrls().getDefaultOsmApiUrl());
-    }
-
     @Test
     final void testActionPerformed() {
         HighwayNameListener tester = new HighwayNameListener();
@@ -66,18 +46,10 @@ class HighwayNameChangeActionTest {
         prim.getNodes().forEach(newDataset::addPrimitive);
         newDataset.addPrimitive(prim);
         newDataset.addDataSetListener(tester);
-        wireMock.startRecording(Config.getUrls().getDefaultOsmApiUrl());
-        wireMock.saveMappings();
         prim.put("name", "Road 2");
-        wireMock.stopRecording();
-        wireMock.saveMappings();
         assertTrue(newDataset.getWays().stream().filter(way -> way.hasTag("name"))
                 .allMatch(way -> "Road 2".equals(way.get("name"))));
-        wireMock.startRecording(Config.getUrls().getDefaultOsmApiUrl());
-        wireMock.saveMappings();
         prim.put("highway", "residential");
-        wireMock.stopRecording();
-        wireMock.saveMappings();
         assertTrue(newDataset.getWays().stream().filter(way -> way.hasTag("name"))
                 .allMatch(way -> "Road 2".equals(way.get("name"))));
     }

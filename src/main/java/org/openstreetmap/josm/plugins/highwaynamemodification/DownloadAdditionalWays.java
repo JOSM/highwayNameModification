@@ -6,17 +6,13 @@ import static java.util.function.Predicate.not;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.List;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Future;
-import java.util.concurrent.RunnableFuture;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
+import java.util.concurrent.CompletableFuture;
+import java.util.function.Supplier;
+import java.util.stream.Collectors;
 
-import org.openstreetmap.josm.actions.downloadtasks.DownloadOsmTask;
-import org.openstreetmap.josm.actions.downloadtasks.DownloadParams;
 import org.openstreetmap.josm.data.Bounds;
 import org.openstreetmap.josm.data.osm.BBox;
 import org.openstreetmap.josm.data.osm.DataIntegrityProblemException;
@@ -27,8 +23,11 @@ import org.openstreetmap.josm.gui.MainApplication;
 import org.openstreetmap.josm.gui.layer.Layer;
 import org.openstreetmap.josm.gui.layer.OsmDataLayer;
 import org.openstreetmap.josm.gui.progress.NullProgressMonitor;
+import org.openstreetmap.josm.io.OsmTransferException;
 import org.openstreetmap.josm.io.OverpassDownloadReader;
 import org.openstreetmap.josm.tools.Logging;
+
+import jakarta.annotation.Nonnull;
 
 /**
  * Download additional highways
@@ -72,10 +71,10 @@ public final class DownloadAdditionalWays {
      * @param oldNames The original name(s) of the highway
      * @param <T>      Some class that extends {@link OsmPrimitive}
      * @return A future which will "finish" when the additional data is downloaded.
-     *         May be {@code null} if we have already downloaded the data for this
-     *         layer.
      */
-    public static <T extends OsmPrimitive> Future<?> getAdditionalWays(Collection<T> highways, String... oldNames) {
+    @Nonnull
+    public static <T extends OsmPrimitive> CompletableFuture<Collection<OsmPrimitive>> getAdditionalWays(
+            @Nonnull Collection<T> highways, @Nonnull String... oldNames) {
         HashSet<T> notDownloaded = new HashSet<>();
         HashSet<String> otherNames = new HashSet<>();
         HashMap<String, HashSet<OsmPrimitive>> tDownloadedWays = new HashMap<>();
@@ -101,7 +100,7 @@ public final class DownloadAdditionalWays {
         }
         downloadedLayerWays.put(layer, downloadedWays);
         if (notDownloaded.isEmpty())
-            return null;
+            return CompletableFuture.completedFuture(Collections.emptyList());
         T initialWay = notDownloaded.iterator().next();
         final Bounds bound = new Bounds(initialWay.getBBox().getBottomRight());
         final DataSet ds1 = initialWay.getDataSet();
@@ -115,7 +114,7 @@ public final class DownloadAdditionalWays {
             bound.extend(bbox.getBottomRight());
             for (Bounds bounding : ds1.getDataSourceBounds()) {
                 if (bounding.toBBox().bounds(bbox))
-                    return null;
+                    return CompletableFuture.completedFuture(Collections.emptyList());
             }
         }
         final StringBuilder overpassQuery = new StringBuilder(118);
@@ -138,93 +137,29 @@ public final class DownloadAdditionalWays {
         final OverpassDownloadReader overpass = new OverpassDownloadReader(bound,
                 OverpassDownloadReader.OVERPASS_SERVER.get(), overpassQuery.toString());
 
-        final DownloadOsmTask download = new DownloadOsmTask();
-        download.setZoomAfterDownload(false);
-        DownloadParams params = new DownloadParams();
-        params.withNewLayer(true);
-        params.withLayerName("haMoyQ4uVVcYTJR4");
-        Future<?> future = download.download(overpass, params, bound, NullProgressMonitor.INSTANCE);
-
-        RunnableFuture<Collection<OsmPrimitive>> mergeData = new RunnableFuture<Collection<OsmPrimitive>>() {
-            private boolean canceled;
-            private boolean done;
-            private Collection<OsmPrimitive> primitives;
-
-            @Override
-            public void run() {
+        Supplier<Collection<OsmPrimitive>> mergeData = () -> {
+            Collection<OsmPrimitive> primitives = Collections.emptyList();
+            final DataSet dataSet;
+            try {
+                dataSet = overpass.parseOsm(NullProgressMonitor.INSTANCE);
+            } catch (DataIntegrityProblemException | OsmTransferException e) {
+                Logging.error(e);
+                return Collections.emptyList();
+            }
+            try {
                 ds1.beginUpdate();
-                try {
-                    future.get();
-                    DataSet dataSet = download.getDownloadedData();
-                    if (dataSet != null) {
-                        primitives = dataSet.allPrimitives();
-                        new DataSetMerger(ds1, dataSet).merge(null, false);
-                    }
-                } catch (ExecutionException | DataIntegrityProblemException e) {
-                    Logging.error(e);
-                } catch (InterruptedException e) {
-                    Logging.error(e);
-                    Thread.currentThread().interrupt();
-                } finally {
-                    ds1.endUpdate();
-                    List<Layer> layers = MainApplication.getLayerManager().getLayers();
-                    for (Layer layer : layers) {
-                        if (params.getLayerName().equals(layer.getName())) {
-                            MainApplication.getLayerManager().removeLayer(layer);
-                        }
-                    }
+                if (dataSet != null) {
+                    primitives = new HashSet<>(dataSet.allPrimitives());
+                    new DataSetMerger(ds1, dataSet).merge(null, false);
+                    primitives = primitives.stream().map(ds1::getPrimitiveById)
+                            .filter(p -> p.hasTag("name", otherNames)).collect(Collectors.toList());
                 }
-                downloadedWays.putAll(tDownloadedWays);
-                done = true;
+            } finally {
+                ds1.endUpdate();
             }
-
-            @Override
-            public boolean cancel(boolean mayInterruptIfRunning) {
-                canceled = true;
-                return false;
-            }
-
-            @Override
-            public boolean isCancelled() {
-                return canceled;
-            }
-
-            @Override
-            public boolean isDone() {
-                return done;
-            }
-
-            @Override
-            public Collection<OsmPrimitive> get() throws InterruptedException, ExecutionException {
-                synchronized (this) {
-                    while (!done && !canceled) {
-                        this.wait(100);
-                    }
-                }
-                if (canceled)
-                    throw new InterruptedException();
-                return primitives;
-            }
-
-            @Override
-            public Collection<OsmPrimitive> get(long timeout, TimeUnit unit)
-                    throws InterruptedException, ExecutionException, TimeoutException {
-                synchronized (this) {
-                    long waitTime = 0;
-                    timeout = unit.toMillis(timeout);
-                    while (!done && waitTime < timeout) {
-                        this.wait(timeout / 100);
-                        waitTime += timeout / 100;
-                    }
-                    if (waitTime >= timeout)
-                        throw new TimeoutException();
-                }
-                if (canceled)
-                    throw new InterruptedException();
-                return primitives;
-            }
+            downloadedWays.putAll(tDownloadedWays);
+            return primitives;
         };
-        MainApplication.worker.execute(mergeData);
-        return mergeData;
+        return CompletableFuture.supplyAsync(mergeData);
     }
 }
