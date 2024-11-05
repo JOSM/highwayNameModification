@@ -20,11 +20,11 @@
         <plugin.src.dir>src/main/java</plugin.src.dir>
         <plugin.resources.dir>src/main/resources</plugin.resources.dir>
         <plugin.main.version>19044</plugin.main.version>
-        <plugin.author>Taylor Smock &lt;incoming+gokaart/JOSM_highwayNameModification@incoming.gitlab.com&gt;</plugin.author>
+        <plugin.author>Taylor Smock</plugin.author>
         <plugin.class>org.openstreetmap.josm.plugins.highwaynamemodification.HighwayNameModification</plugin.class>
         <plugin.description>Modify addr tags when a highway name is changed</plugin.description>
         <plugin.icon>images/deltasignmod.svg</plugin.icon>
-        <plugin.link>https://gitlab.com/gokaart/JOSM_highwayNameModification</plugin.link>
+        <plugin.link>https://github.com/JOSM/highwayNameModification</plugin.link>
         <plugin.canloadatruntime>true</plugin.canloadatruntime>
     </properties>
     <build>
