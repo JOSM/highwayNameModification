@@ -22,11 +22,15 @@ import org.openstreetmap.josm.data.osm.IPrimitive;
 import org.openstreetmap.josm.data.osm.OsmPrimitive;
 import org.openstreetmap.josm.data.osm.Way;
 import org.openstreetmap.josm.data.osm.WaySegment;
+import org.openstreetmap.josm.data.osm.search.SearchCompiler;
+import org.openstreetmap.josm.data.osm.search.SearchParseError;
 import org.openstreetmap.josm.gui.ConditionalOptionPaneUtil;
 import org.openstreetmap.josm.gui.MainApplication;
 import org.openstreetmap.josm.gui.util.GuiHelper;
 import org.openstreetmap.josm.tools.Geometry;
+import org.openstreetmap.josm.tools.JosmRuntimeException;
 import org.openstreetmap.josm.tools.Logging;
+import org.openstreetmap.josm.tools.SubclassFilteredCollection;
 
 /**
  * The actual class for modifying ways
@@ -127,7 +131,7 @@ final class ModifyWays implements Runnable {
                     newWays = DownloadAdditionalWays.getAdditionalWays(wayChangingName, originalName);
                 }
             }
-            newWays = newWays.thenApplyAsync(ignored -> {
+            newWays.thenApplyAsync(ignored -> {
                 for (OsmPrimitive osm : wayChangingName) {
                     if (originalName != null) {
                         doRealRun(osm, originalName);
@@ -140,17 +144,25 @@ final class ModifyWays implements Runnable {
                     }
                 }
                 return ignored;
-            });
-            if (Boolean.TRUE.equals(this.recursive)) {
-                newWays.thenApplyAsync(primitives -> {
-                    List<OsmPrimitive> toChange = primitives.stream().filter(p -> p.hasTag("name", this.originalName))
-                            .collect(Collectors.toList());
+            }).thenApplyAsync(primitives -> {
+                List<OsmPrimitive> toChange = primitives.stream().filter(p -> p.hasTag("name", this.originalName))
+                        .collect(Collectors.toList());
+                if (Boolean.TRUE.equals(this.recursive) && !toChange.isEmpty()) {
                     final ChangePropertyCommand changePropertyCommand = new ChangePropertyCommand(toChange, "name",
                             wayChangingName.iterator().next().get("name"));
                     GuiHelper.runInEDT(() -> UndoRedoHandler.getInstance().add(changePropertyCommand));
-                    return primitives;
-                });
-            }
+                } else if (toChange.isEmpty() || !Boolean.TRUE.equals(this.recursive)) {
+                    try {
+                        final DataSet ds = this.wayChangingName.iterator().next().getDataSet();
+                        ds.setSelected(SubclassFilteredCollection.filter(ds.allPrimitives(),
+                                SearchCompiler.compile(this.originalName)));
+                        TodoHelper.addTodoItems();
+                    } catch (SearchParseError searchParseError) {
+                        throw new JosmRuntimeException(searchParseError);
+                    }
+                }
+                return primitives;
+            });
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             Logging.error(e);
