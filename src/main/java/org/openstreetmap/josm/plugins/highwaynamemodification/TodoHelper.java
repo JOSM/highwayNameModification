@@ -46,11 +46,16 @@ public final class TodoHelper {
             return;
         }
         final ToggleDialog todoDialog = MainApplication.getMap().getToggleDialog(CLASS);
+        if (todoDialog == null) {
+            return;
+        }
         try {
             AbstractListModel<?> m = (AbstractListModel<?>) MODEL.get(todoDialog);
-            if (m.getSize() == 0) {
+            if (m != null && m.getSize() == 0) {
                 JosmAction a = (JosmAction) ACT_ADD.get(todoDialog);
-                a.actionPerformed(null);
+                if (a != null) {
+                    a.actionPerformed(null);
+                }
             }
         } catch (ReflectiveOperationException e) {
             Logging.error(e);
