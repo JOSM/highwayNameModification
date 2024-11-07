@@ -152,14 +152,16 @@ final class ModifyWays implements Runnable {
                             wayChangingName.iterator().next().get("name"));
                     GuiHelper.runInEDT(() -> UndoRedoHandler.getInstance().add(changePropertyCommand));
                 } else if (toChange.isEmpty() || !Boolean.TRUE.equals(this.recursive)) {
-                    try {
-                        final DataSet ds = this.wayChangingName.iterator().next().getDataSet();
-                        ds.setSelected(SubclassFilteredCollection.filter(ds.allPrimitives(),
-                                SearchCompiler.compile(this.originalName)));
-                        TodoHelper.addTodoItems();
-                    } catch (SearchParseError searchParseError) {
-                        throw new JosmRuntimeException(searchParseError);
-                    }
+                    final DataSet ds = this.wayChangingName.iterator().next().getDataSet();
+                    GuiHelper.runInEDT(() -> {
+                        try {
+                            ds.setSelected(SubclassFilteredCollection.filter(ds.allPrimitives(),
+                                    SearchCompiler.compile(this.originalName)));
+                            TodoHelper.addTodoItems();
+                        } catch (SearchParseError searchParseError) {
+                            throw new JosmRuntimeException(searchParseError);
+                        }
+                    });
                 }
                 return primitives;
             });
