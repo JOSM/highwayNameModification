@@ -61,7 +61,7 @@ final class ModifyWays implements Runnable {
     ModifyWays(Collection<? extends OsmPrimitive> osmCollection, String originalName, boolean ignoreNameChange,
             boolean isDownloadTask, Boolean recursive) {
         this.wayChangingName = osmCollection;
-        this.originalName = originalName;
+        this.originalName = originalName == null ? "" : originalName;
         this.ignoreNewName = ignoreNameChange;
         this.downloadTask = isDownloadTask;
         this.recursive = recursive;
