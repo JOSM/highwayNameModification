@@ -32,6 +32,8 @@ import org.openstreetmap.josm.tools.JosmRuntimeException;
 import org.openstreetmap.josm.tools.Logging;
 import org.openstreetmap.josm.tools.SubclassFilteredCollection;
 
+import jakarta.annotation.Nullable;
+
 /**
  * The actual class for modifying ways
  *
@@ -45,6 +47,7 @@ final class ModifyWays implements Runnable {
     private final boolean downloadTask;
 
     private final Collection<? extends OsmPrimitive> wayChangingName;
+    @Nullable
     private final String originalName;
     private final boolean ignoreNewName;
     private Boolean recursive;
@@ -61,7 +64,7 @@ final class ModifyWays implements Runnable {
     ModifyWays(Collection<? extends OsmPrimitive> osmCollection, String originalName, boolean ignoreNameChange,
             boolean isDownloadTask, Boolean recursive) {
         this.wayChangingName = osmCollection;
-        this.originalName = originalName == null ? "" : originalName;
+        this.originalName = originalName;
         this.ignoreNewName = ignoreNameChange;
         this.downloadTask = isDownloadTask;
         this.recursive = recursive;
@@ -151,7 +154,7 @@ final class ModifyWays implements Runnable {
                     final ChangePropertyCommand changePropertyCommand = new ChangePropertyCommand(toChange, "name",
                             wayChangingName.iterator().next().get("name"));
                     GuiHelper.runInEDT(() -> UndoRedoHandler.getInstance().add(changePropertyCommand));
-                } else if (toChange.isEmpty() || !Boolean.TRUE.equals(this.recursive)) {
+                } else if (this.originalName != null && (toChange.isEmpty() || !Boolean.TRUE.equals(this.recursive))) {
                     final DataSet ds = this.wayChangingName.iterator().next().getDataSet();
                     GuiHelper.runInEDT(() -> {
                         try {

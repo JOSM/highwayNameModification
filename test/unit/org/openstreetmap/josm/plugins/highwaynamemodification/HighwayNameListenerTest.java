@@ -16,6 +16,7 @@ import java.util.concurrent.TimeoutException;
 import javax.swing.JOptionPane;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.openstreetmap.josm.TestUtils;
 import org.openstreetmap.josm.actions.downloadtasks.DownloadOsmTask;
@@ -92,6 +93,7 @@ class HighwayNameListenerTest {
 
     @Main
     @Test
+    @Timeout(60)
     void testRecursiveNameChange(WireMockRuntimeInfo wireMockRuntimeInfo)
             throws ExecutionException, InterruptedException, TimeoutException {
         for (GuiAnswers.Options option : GuiAnswers.Options.values()) {
